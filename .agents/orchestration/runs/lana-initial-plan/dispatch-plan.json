@@ -1,0 +1,368 @@
+{
+  "schema_version": 5,
+  "task_id": "lana-initial-plan",
+  "generated_at": "2026-08-10T22:46:30.153Z",
+  "status": "ready",
+  "workflow": "new-service",
+  "inputs": {
+    "task": "Implement a new Go service from scratch, build Lana as a Codex CLI clone",
+    "repository_root": "/home/deagy/sdk/lana",
+    "base": null,
+    "changed_file_source": "git-status",
+    "changed_files": [
+      ".agents/knowledge-store/config.json",
+      ".agents/knowledge-store/data/knowledge.db",
+      ".agents/shared/platform-impact-profile.yaml",
+      ".agents/shared/team-profile.yaml"
+    ],
+    "classification": "internal",
+    "source_filter": "local-lana-c27a6363ff8a"
+  },
+  "matched_routes": [
+    {
+      "id": "go-service-execution",
+      "reasons": {
+        "keywords": [],
+        "keyword_groups": [
+          [
+            "go service"
+          ],
+          [
+            "implement",
+            "build"
+          ]
+        ],
+        "paths": []
+      }
+    }
+  ],
+  "matched_risks": [
+    {
+      "id": "architecture-change",
+      "reasons": {
+        "keywords": [
+          "from scratch"
+        ],
+        "keyword_groups": [],
+        "paths": []
+      }
+    }
+  ],
+  "context_packs": [],
+  "agents": {
+    "primary": [
+      "go-service-implementer"
+    ],
+    "reviewers": [
+      "test-engineer",
+      "code-reviewer"
+    ],
+    "support": [
+      "product-intent-agent",
+      "requirements-agent",
+      "cloud-architect",
+      "threat-modeler",
+      "backend-engineer"
+    ]
+  },
+  "dispatch_disposition": {
+    "status": "staffed",
+    "reason": "A primary and/or reviewer role was selected and can be dispatched as an accountable executor or independent reviewer."
+  },
+  "teams": [],
+  "lifecycle_tracking": {
+    "status": "integrated"
+  },
+  "required_quality_gates": [
+    {
+      "id": "G1",
+      "required": true,
+      "reason": "Intent lifecycle gate (intent phase).",
+      "contributing_routes": [
+        "change-intake"
+      ]
+    },
+    {
+      "id": "G2",
+      "required": true,
+      "reason": "Requirements Baseline lifecycle gate (requirements phase).",
+      "contributing_routes": [
+        "change-intake"
+      ]
+    },
+    {
+      "id": "G3",
+      "required": true,
+      "reason": "Architecture lifecycle gate (architecture phase).",
+      "contributing_routes": [
+        "go-service-execution",
+        "architecture-change"
+      ]
+    },
+    {
+      "id": "G4",
+      "required": true,
+      "reason": "Governance and Data lifecycle gate (governance-data phase).",
+      "contributing_routes": [
+        "go-service-execution"
+      ]
+    },
+    {
+      "id": "G5",
+      "required": true,
+      "reason": "Security and Crypto lifecycle gate (security-crypto phase).",
+      "contributing_routes": [
+        "go-service-execution"
+      ]
+    },
+    {
+      "id": "G6",
+      "required": true,
+      "reason": "Verification and Test lifecycle gate (verify phase).",
+      "contributing_routes": [
+        "go-service-execution"
+      ]
+    },
+    {
+      "id": "G7",
+      "required": true,
+      "reason": "Evidence lifecycle gate (evidence phase).",
+      "contributing_routes": [
+        "go-service-execution"
+      ]
+    }
+  ],
+  "ignored_quality_gates": [],
+  "human_gates": [],
+  "knowledge_context": {
+    "status": "planned",
+    "classification": "internal",
+    "source_filter": "local-lana-c27a6363ff8a",
+    "requests": [
+      {
+        "agent": "product-intent-agent",
+        "query": "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve approved product objectives, mission outcomes, scope decisions, constraints, classifications, environments, and success measures.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "product-intent-agent",
+            "--task-id",
+            "lana-initial-plan",
+            "--query",
+            "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve approved product objectives, mission outcomes, scope decisions, constraints, classifications, environments, and success measures.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "requirements-agent",
+        "query": "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve approved intent baselines, requirement decompositions, acceptance criteria, dependencies, control mappings, test obligations, and traceability decisions.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "requirements-agent",
+            "--task-id",
+            "lana-initial-plan",
+            "--query",
+            "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve approved intent baselines, requirement decompositions, acceptance criteria, dependencies, control mappings, test obligations, and traceability decisions.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "cloud-architect",
+        "query": "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "cloud-architect",
+            "--task-id",
+            "lana-initial-plan",
+            "--query",
+            "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "threat-modeler",
+        "query": "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve prior threats, incidents, mitigations, trust boundaries, and residual risks.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "threat-modeler",
+            "--task-id",
+            "lana-initial-plan",
+            "--query",
+            "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve prior threats, incidents, mitigations, trust boundaries, and residual risks.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "backend-engineer",
+        "query": "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve backend service patterns, datastore decisions, schemas, migrations, APIs, operational lessons, and approved Go or PostgreSQL conventions.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "backend-engineer",
+            "--task-id",
+            "lana-initial-plan",
+            "--query",
+            "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve backend service patterns, datastore decisions, schemas, migrations, APIs, operational lessons, and approved Go or PostgreSQL conventions.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "go-service-implementer",
+        "query": "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve Go service patterns, safe concurrency, interfaces, tests, and approved library conventions.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "go-service-implementer",
+            "--task-id",
+            "lana-initial-plan",
+            "--query",
+            "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve Go service patterns, safe concurrency, interfaces, tests, and approved library conventions.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "test-engineer",
+        "query": "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve Gherkin scenarios, regressions, failure cases, and quality history.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "test-engineer",
+            "--task-id",
+            "lana-initial-plan",
+            "--query",
+            "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve Gherkin scenarios, regressions, failure cases, and quality history.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "code-reviewer",
+        "query": "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve prior defects, coding conventions, exceptions, and relevant findings.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "code-reviewer",
+            "--task-id",
+            "lana-initial-plan",
+            "--query",
+            "Task: Implement a new Go service from scratch, build Lana as a Codex CLI clone. Retrieve prior defects, coding conventions, exceptions, and relevant findings.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "catalog_content_hash": "sha256:ac36d049d81dde72c5672d56398a4743cf76ff0c760f4d59868ac1a78b96f7d1",
+    "routing_content_hash": "sha256:165ac7d2291aabc6b8bab009c86097ca5700a4feaea86d2d43e590d6d6ba29e1",
+    "git_commit_sha": "b203b30171e3efca1184fec16bd1a36001678373",
+    "git_dirty_paths": [],
+    "agentic_sdlc_contract_version": 2
+  },
+  "dispatch_fingerprint": "sha256:c3a2a78a2903ce0f9abb5b61c6bbb069b34d1b504a61b0d53b1861d7a3777071"
+}

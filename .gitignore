@@ -1,0 +1,15 @@
+# Lana keeps workspace-local runtime state here. It can include transcripts,
+# resolved configuration, logs, and future credential-store material.
+.lana/
+
+# Local environment overrides may carry provider credentials. Keep shareable
+# templates versionable so setup remains reproducible.
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Default local diagnostic output. Explicit fixtures and source-controlled
+# examples should use their own paths/extensions instead.
+*.log

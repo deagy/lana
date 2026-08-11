@@ -1,0 +1,511 @@
+{
+  "schema_version": 5,
+  "task_id": "lana-implementation-plan",
+  "generated_at": "2026-08-10T22:53:12.525Z",
+  "status": "dispatched",
+  "workflow": "new-service",
+  "inputs": {
+    "task": "Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan",
+    "repository_root": "/home/deagy/sdk/lana",
+    "base": null,
+    "changed_file_source": "git-status",
+    "changed_files": [
+      ".agents/knowledge-store/config.json",
+      ".agents/knowledge-store/data/knowledge.db",
+      ".agents/orchestration/runs/lana-initial-plan/dispatch-plan.json",
+      ".agents/shared/platform-impact-profile.yaml",
+      ".agents/shared/team-profile.yaml",
+      "agents-accessibility-reviewer.toml",
+      "agents-adr-writer.toml",
+      "agents-agent-performance-evaluator.toml",
+      "agents-agent-version-control.toml",
+      "agents-agent-workflow-implementer.toml",
+      "agents-ai-engineer.toml",
+      "agents-ai-observability-implementer.toml",
+      "agents-ansible-automation-implementer.toml",
+      "agents-api-contract-engineer.toml",
+      "agents-application-engineer.toml",
+      "agents-approval-router.toml",
+      "agents-architecture-authority.toml",
+      "agents-architecture-diagram-author.toml",
+      "agents-assumption-register.toml",
+      "agents-backend-engineer.toml",
+      "agents-bare-metal-provisioning-implementer.toml",
+      "agents-bgp-routing-implementer.toml",
+      "agents-black-box-tester.toml",
+      "agents-browser-test-implementer.toml",
+      "agents-c-systems-implementer.toml",
+      "agents-chaos-resilience-engineer.toml",
+      "agents-cicd-engineer.toml",
+      "agents-claim-conformance.toml",
+      "agents-classification-and-marking-gate.toml",
+      "agents-cloud-architect.toml",
+      "agents-cmake-build-implementer.toml",
+      "agents-code-reviewer.toml",
+      "agents-compliance-reviewer.toml",
+      "agents-compose-stack-implementer.toml",
+      "agents-cost-capacity-planner.toml",
+      "agents-cpp-systems-implementer.toml",
+      "agents-cryptographic-assurance-engineer.toml",
+      "agents-css-layout-implementer.toml",
+      "agents-data-governance-engineer.toml",
+      "agents-data-transformation-implementer.toml",
+      "agents-database-reliability-engineer.toml",
+      "agents-debugging-engineer.toml",
+      "agents-decision-record.toml",
+      "agents-decommission-engineer.toml",
+      "agents-delivery-sequencer.toml",
+      "agents-dependency-remediation-implementer.toml",
+      "agents-deployment-realist.toml",
+      "agents-device-driver-implementer.toml",
+      "agents-distributed-storage-implementer.toml",
+      "agents-doctrine-conformance.toml",
+      "agents-ebpf-implementer.toml",
+      "agents-edge-cloud-integration-implementer.toml",
+      "agents-embedded-c-implementer.toml",
+      "agents-embedded-linux-platform-implementer.toml",
+      "agents-embedding-index-implementer.toml",
+      "agents-end-user-tester.toml",
+      "agents-engineering-lead-aide.toml",
+      "agents-escalation-manager.toml",
+      "agents-eval-dataset-implementer.toml",
+      "agents-eval-harness-implementer.toml",
+      "agents-evidence-curator.toml",
+      "agents-example-fixture-implementer.toml",
+      "agents-falsification-agent.toml",
+      "agents-finops-engineer.toml",
+      "agents-firmware-implementer.toml",
+      "agents-first-principles-challenger.toml",
+      "agents-frontend-accessibility-remediator.toml",
+      "agents-frontend-engineer.toml",
+      "agents-gherkin-test-implementer.toml",
+      "agents-git-operations-implementer.toml",
+      "agents-github-actions-implementer.toml",
+      "agents-gitlab-ci-implementer.toml",
+      "agents-gitops-delivery-implementer.toml",
+      "agents-go-service-implementer.toml",
+      "agents-go-test-implementer.toml",
+      "agents-governance-lead-aide.toml",
+      "agents-governance-planner.toml",
+      "agents-guardrail-policy-implementer.toml",
+      "agents-halt-authority.toml",
+      "agents-hardware-test-implementer.toml",
+      "agents-helm-chart-implementer.toml",
+      "agents-incident-commander.toml",
+      "agents-index.json",
+      "agents-inference-gateway-implementer.toml",
+      "agents-infrastructure-provisioner.toml",
+      "agents-infrastructure-reviewer.toml",
+      "agents-interaction-designer.toml",
+      "agents-interoperability-test-implementer.toml",
+      "agents-ip-provenance-agent.toml",
+      "agents-javascript-maintenance-implementer.toml",
+      "agents-kernel-module-implementer.toml",
+      "agents-knowledge-store-steward.toml",
+      "agents-kubernetes-manifest-implementer.toml",
+      "agents-kubernetes-networking-implementer.toml",
+      "agents-kubernetes-operator-implementer.toml",
+      "agents-kyverno-policy-implementer.toml",
+      "agents-linux-systems-implementer.toml",
+      "agents-mcp-server-implementer.toml",
+      "agents-migration-test-implementer.toml",
+      "agents-model-routing-implementer.toml",
+      "agents-network-config-implementer.toml",
+      "agents-network-management-automation-implementer.toml",
+      "agents-network-observability-implementer.toml",
+      "agents-network-security-policy-implementer.toml",
+      "agents-node-typescript-implementer.toml",
+      "agents-observability-sre.toml",
+      "agents-opentofu-module-implementer.toml",
+      "agents-performance-testing-engineer.toml",
+      "agents-phase-gate.toml",
+      "agents-pipeline-security-reviewer.toml",
+      "agents-pkcs11-hsm-integration-implementer.toml",
+      "agents-pki-certificate-lifecycle-implementer.toml",
+      "agents-policy-as-code-engineer.toml",
+      "agents-postgres-query-implementer.toml",
+      "agents-pqc-integration-implementer.toml",
+      "agents-precision-timing-implementer.toml",
+      "agents-premortem.toml",
+      "agents-product-intent-agent.toml",
+      "agents-product-owner-aide.toml",
+      "agents-prompt-artifact-implementer.toml",
+      "agents-protocol-fuzzing-implementer.toml",
+      "agents-protocol-integration-implementer.toml",
+      "agents-proxmox-opentofu-implementer.toml",
+      "agents-python-automation-implementer.toml",
+      "agents-python-test-implementer.toml",
+      "agents-qkd-qkms-integration-implementer.toml",
+      "agents-quantum-network-integration-implementer.toml",
+      "agents-quantum-timing-assurance-engineer.toml",
+      "agents-rbac-manifest-implementer.toml",
+      "agents-react-component-implementer.toml",
+      "agents-red-team.toml",
+      "agents-release-authority-aide.toml",
+      "agents-release-automation-implementer.toml",
+      "agents-release-engineer.toml",
+      "agents-release-owner-aide.toml",
+      "agents-requirements-agent.toml",
+      "agents-retention-and-deletion-executor.toml",
+      "agents-retrieval-pipeline-implementer.toml",
+      "agents-rtos-integration-implementer.toml",
+      "agents-scope-boundary.toml",
+      "agents-secret-hygiene-implementer.toml",
+      "agents-secrets-identity-engineer.toml",
+      "agents-secure-boot-implementer.toml",
+      "agents-secure-channel-integration-implementer.toml",
+      "agents-security-lead-aide.toml",
+      "agents-security-reviewer.toml",
+      "agents-selector-test-implementer.toml",
+      "agents-service-owner-aide.toml",
+      "agents-shell-automation-implementer.toml",
+      "agents-sonicos-config-implementer.toml",
+      "agents-sql-query-implementer.toml",
+      "agents-starlingx-config-implementer.toml",
+      "agents-subtraction-agent.toml",
+      "agents-supply-chain-remediation-implementer.toml",
+      "agents-supply-chain-security-reviewer.toml",
+      "agents-support-triage-agent.toml",
+      "agents-system-architect-aide.toml",
+      "agents-talos-config-implementer.toml",
+      "agents-technical-documentation-implementer.toml",
+      "agents-technical-writer.toml",
+      "agents-test-engineer.toml",
+      "agents-threat-modeler.toml",
+      "agents-typescript-test-implementer.toml",
+      "agents-vendor-register-steward.toml",
+      "agents-visual-designer.toml"
+    ],
+    "classification": "internal",
+    "source_filter": "local-lana-c27a6363ff8a"
+  },
+  "matched_routes": [
+    {
+      "id": "backend",
+      "reasons": {
+        "keywords": [
+          "api"
+        ],
+        "keyword_groups": [],
+        "paths": []
+      }
+    },
+    {
+      "id": "api-contract",
+      "reasons": {
+        "keywords": [
+          "api design"
+        ],
+        "keyword_groups": [],
+        "paths": []
+      }
+    }
+  ],
+  "matched_risks": [
+    {
+      "id": "architecture-change",
+      "reasons": {
+        "keywords": [
+          "architecture"
+        ],
+        "keyword_groups": [],
+        "paths": []
+      }
+    }
+  ],
+  "context_packs": [],
+  "agents": {
+    "primary": [
+      "api-contract-engineer",
+      "backend-engineer"
+    ],
+    "reviewers": [
+      "test-engineer",
+      "code-reviewer"
+    ],
+    "support": [
+      "cloud-architect",
+      "threat-modeler",
+      "frontend-engineer"
+    ]
+  },
+  "dispatch_disposition": {
+    "status": "staffed",
+    "reason": "A primary and/or reviewer role was selected and can be dispatched as an accountable executor or independent reviewer."
+  },
+  "teams": [],
+  "lifecycle_tracking": {
+    "status": "integrated"
+  },
+  "required_quality_gates": [
+    {
+      "id": "G1",
+      "required": true,
+      "reason": "Required by the standalone lifecycle gate sequence.",
+      "contributing_routes": [
+        "lifecycle-sequence"
+      ]
+    },
+    {
+      "id": "G2",
+      "required": true,
+      "reason": "Required by the standalone lifecycle gate sequence.",
+      "contributing_routes": [
+        "lifecycle-sequence"
+      ]
+    },
+    {
+      "id": "G3",
+      "required": true,
+      "reason": "Architecture lifecycle gate (architecture phase).",
+      "contributing_routes": [
+        "backend",
+        "api-contract",
+        "architecture-change"
+      ]
+    },
+    {
+      "id": "G4",
+      "required": true,
+      "reason": "Governance and Data lifecycle gate (governance-data phase).",
+      "contributing_routes": [
+        "backend"
+      ]
+    },
+    {
+      "id": "G5",
+      "required": true,
+      "reason": "Security and Crypto lifecycle gate (security-crypto phase).",
+      "contributing_routes": [
+        "backend"
+      ]
+    },
+    {
+      "id": "G6",
+      "required": true,
+      "reason": "Verification and Test lifecycle gate (verify phase).",
+      "contributing_routes": [
+        "backend"
+      ]
+    },
+    {
+      "id": "G7",
+      "required": true,
+      "reason": "Evidence lifecycle gate (evidence phase).",
+      "contributing_routes": [
+        "backend"
+      ]
+    }
+  ],
+  "ignored_quality_gates": [],
+  "human_gates": [],
+  "knowledge_context": {
+    "status": "planned",
+    "classification": "internal",
+    "source_filter": "local-lana-c27a6363ff8a",
+    "requests": [
+      {
+        "agent": "cloud-architect",
+        "query": "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "cloud-architect",
+            "--task-id",
+            "lana-implementation-plan",
+            "--query",
+            "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "threat-modeler",
+        "query": "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve prior threats, incidents, mitigations, trust boundaries, and residual risks.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "threat-modeler",
+            "--task-id",
+            "lana-implementation-plan",
+            "--query",
+            "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve prior threats, incidents, mitigations, trust boundaries, and residual risks.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "api-contract-engineer",
+        "query": "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve prior contract decisions, versioning history, breaking-change migrations, and consumer compatibility constraints.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "api-contract-engineer",
+            "--task-id",
+            "lana-implementation-plan",
+            "--query",
+            "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve prior contract decisions, versioning history, breaking-change migrations, and consumer compatibility constraints.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "frontend-engineer",
+        "query": "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve frontend implementation patterns, UX decisions, accessibility behavior, API contracts, browser security, and approved React or TypeScript conventions.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "frontend-engineer",
+            "--task-id",
+            "lana-implementation-plan",
+            "--query",
+            "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve frontend implementation patterns, UX decisions, accessibility behavior, API contracts, browser security, and approved React or TypeScript conventions.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "backend-engineer",
+        "query": "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve backend service patterns, datastore decisions, schemas, migrations, APIs, operational lessons, and approved Go or PostgreSQL conventions.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "backend-engineer",
+            "--task-id",
+            "lana-implementation-plan",
+            "--query",
+            "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve backend service patterns, datastore decisions, schemas, migrations, APIs, operational lessons, and approved Go or PostgreSQL conventions.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "test-engineer",
+        "query": "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve Gherkin scenarios, regressions, failure cases, and quality history.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "test-engineer",
+            "--task-id",
+            "lana-implementation-plan",
+            "--query",
+            "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve Gherkin scenarios, regressions, failure cases, and quality history.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      },
+      {
+        "agent": "code-reviewer",
+        "query": "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve prior defects, coding conventions, exceptions, and relevant findings.",
+        "invocation": {
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
+          "args": [
+            "/home/deagy/sdk/cadre/roster/knowledge-store/src/cli.py",
+            "context",
+            "--agent",
+            "code-reviewer",
+            "--task-id",
+            "lana-implementation-plan",
+            "--query",
+            "Task: Plan the implementation of Lana as a Codex CLI clone: define architecture, scope, module structure, API design, development phases, testing strategy, and implementation plan. Retrieve prior defects, coding conventions, exceptions, and relevant findings.",
+            "--classification",
+            "internal",
+            "--top",
+            "5",
+            "--source",
+            "local-lana-c27a6363ff8a"
+          ]
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "catalog_content_hash": "sha256:ac36d049d81dde72c5672d56398a4743cf76ff0c760f4d59868ac1a78b96f7d1",
+    "routing_content_hash": "sha256:165ac7d2291aabc6b8bab009c86097ca5700a4feaea86d2d43e590d6d6ba29e1",
+    "git_commit_sha": "b203b30171e3efca1184fec16bd1a36001678373",
+    "git_dirty_paths": [],
+    "agentic_sdlc_contract_version": 2
+  },
+  "dispatch_fingerprint": "sha256:ae31cdaf443decc1400b96441bdb24160864432ebc9e5ab75e0e3ac99924f8a0",
+  "dispatched_at": "2026-08-10T22:57:39.251518+00:00",
+  "outputs": {
+    "implementation_plan": ".agents/orchestration/runs/lana-implementation-plan/outputs/implementation-plan.md",
+    "plan_status": "compiled"
+  }
+}

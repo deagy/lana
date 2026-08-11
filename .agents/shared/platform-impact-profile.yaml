@@ -1,0 +1,56 @@
+impact_categories:
+- id: platform-phase
+  applicability: not-applicable
+  rationale: Local CLI tool; no platform deployment phases
+- id: platform-component
+  applicability: not-applicable
+  rationale: Local CLI tool; no platform components
+- id: participant-digital-ecosystem-relevance
+  applicability: not-applicable
+  rationale: Internal developer tooling with no external ecosystem impact
+- id: digital-domain-impact
+  applicability: not-applicable
+  rationale: Local CLI tool with no digital domain impact
+- id: governance-policy-impact
+  applicability: not-applicable
+  rationale: Internal tooling with no governance policy impact
+- id: trust-impact
+  applicability: not-applicable
+  rationale: Internal tooling with no trust-impact obligations
+- id: time-impact
+  applicability: not-applicable
+  rationale: Local CLI tool with no time-impact obligations
+- id: qkms-crypto-impact
+  applicability: not-applicable
+  rationale: Internal tooling with no cryptographic key material
+- id: data-jurisdiction-impact
+  applicability: not-applicable
+  rationale: Internal tooling with no cross-jurisdiction data flows
+- id: meridian-impact
+  applicability: not-applicable
+  rationale: Internal tooling with no Meridian-relevant impact
+- id: ron-persistence-impact
+  applicability: not-applicable
+  rationale: Internal tooling with no RON persistence impact
+- id: layer-0-impact
+  applicability: not-applicable
+  rationale: Internal tooling with no Layer-0 impact
+- id: evidence-requirement
+  applicability: not-applicable
+  rationale: Internal tooling with no evidence requirements
+- id: accreditation-relevance
+  applicability: not-applicable
+  rationale: Internal tooling with no accreditation relevance
+specialized_boms:
+- type: SBOM
+  applicability: not-applicable
+- type: CBOM
+  applicability: not-applicable
+- type: QBOM
+  applicability: not-applicable
+- type: AI-BOM
+  applicability: not-applicable
+- type: Trust-BOM
+  applicability: not-applicable
+- type: Time-BOM
+  applicability: not-applicable
