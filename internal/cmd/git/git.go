@@ -2,11 +2,15 @@
 package git
 
 import (
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	ghclient "github.com/deagy/lana/internal/github"
+	glclient "github.com/deagy/lana/internal/gitlab"
 )
 
 // NewCommand creates the git command group.
@@ -28,9 +32,9 @@ Subcommands:
   fetch       Fetch from remote
   stash       Stash changes
   merge       Merge branches
-  pr-create   Create a draft PR
-  pr-list     List open PRs
-  pr-diff     Show PR diff
+  pr-create   Create a PR/MR
+  pr-list     List open PRs/MRs
+  pr-diff     Show PR/MR diff
 `,
 	}
 	cmd.AddCommand(gitStatusCommand())
@@ -52,7 +56,6 @@ Subcommands:
 
 func gitStatusCommand() *cobra.Command {
 	var short bool
-
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show working tree status",
@@ -73,15 +76,12 @@ func gitStatusCommand() *cobra.Command {
 			return nil
 		},
 	}
-
 	cmd.Flags().BoolVarP(&short, "short", "s", false, "Short format")
 	return cmd
 }
 
 func gitDiffCommand() *cobra.Command {
-	var cached bool
-	var statFlag bool
-
+	var cached, statFlag bool
 	cmd := &cobra.Command{
 		Use:   "diff",
 		Short: "Show diff",
@@ -94,7 +94,6 @@ func gitDiffCommand() *cobra.Command {
 				gitArgs = append(gitArgs, "--stat")
 			}
 			gitArgs = append(gitArgs, args...)
-
 			out, err := exec.Command("git", gitArgs...).CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("git diff: %w", err)
@@ -103,7 +102,6 @@ func gitDiffCommand() *cobra.Command {
 			return nil
 		},
 	}
-
 	cmd.Flags().BoolVarP(&cached, "cached", "c", false, "Show cached changes")
 	cmd.Flags().BoolVarP(&statFlag, "stat", "S", false, "Show stat summary")
 	return cmd
@@ -112,7 +110,6 @@ func gitDiffCommand() *cobra.Command {
 func gitLogCommand() *cobra.Command {
 	var n, maxCount int
 	var oneline bool
-
 	cmd := &cobra.Command{
 		Use:   "log",
 		Short: "Show log",
@@ -128,7 +125,6 @@ func gitLogCommand() *cobra.Command {
 				gitArgs = append(gitArgs, "-n", fmt.Sprintf("%d", n))
 			}
 			gitArgs = append(gitArgs, args...)
-
 			out, err := exec.Command("git", gitArgs...).CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("git log: %w", err)
@@ -137,17 +133,14 @@ func gitLogCommand() *cobra.Command {
 			return nil
 		},
 	}
-
-	cmd.Flags().IntVarP(&n, "n", "n", 0, "Number of commits")
-	cmd.Flags().IntVarP(&maxCount, "max-count", "N", 10, "Maximum commits")
 	cmd.Flags().BoolVarP(&oneline, "oneline", "1", false, "One line per commit")
+	cmd.Flags().IntVarP(&maxCount, "max-count", "n", 0, "Maximum number of commits")
+	cmd.Flags().IntVarP(&n, "num", "N", 0, "Number of commits")
 	return cmd
 }
 
 func gitBranchCommand() *cobra.Command {
 	var all bool
-	var current bool
-
 	cmd := &cobra.Command{
 		Use:   "branch",
 		Short: "Show current branch",
@@ -156,10 +149,6 @@ func gitBranchCommand() *cobra.Command {
 			if all {
 				gitArgs = append(gitArgs, "-a")
 			}
-			if current {
-				gitArgs = []string{"branch", "--show-current"}
-			}
-
 			out, err := exec.Command("git", gitArgs...).CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("git branch: %w", err)
@@ -168,16 +157,12 @@ func gitBranchCommand() *cobra.Command {
 			return nil
 		},
 	}
-
-	cmd.Flags().BoolVarP(&all, "all", "a", false, "Show all branches including remote")
-	cmd.Flags().BoolVarP(&current, "current", "c", false, "Show only current branch")
+	cmd.Flags().BoolVarP(&all, "all", "a", false, "Show all branches")
 	return cmd
 }
 
 func gitCommitCommand() *cobra.Command {
 	var message string
-	var amend bool
-
 	cmd := &cobra.Command{
 		Use:   "commit",
 		Short: "Commit changes",
@@ -185,12 +170,8 @@ func gitCommitCommand() *cobra.Command {
 			if message == "" {
 				return fmt.Errorf("--message is required")
 			}
-
 			gitArgs := []string{"commit", "-m", message}
-			if amend {
-				gitArgs = append(gitArgs, "--amend")
-			}
-
+			gitArgs = append(gitArgs, args...)
 			out, err := exec.Command("git", gitArgs...).CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("git commit: %w\n%s", err, string(out))
@@ -199,25 +180,21 @@ func gitCommitCommand() *cobra.Command {
 			return nil
 		},
 	}
-
 	cmd.Flags().StringVarP(&message, "message", "m", "", "Commit message (required)")
-	cmd.Flags().BoolVarP(&amend, "amend", "a", false, "Amend last commit")
 	return cmd
 }
 
 func gitPushCommand() *cobra.Command {
 	var force bool
-
 	cmd := &cobra.Command{
 		Use:   "push",
 		Short: "Push changes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			gitArgs := []string{"push"}
 			if force {
-				gitArgs = append(gitArgs, "--force-with-lease")
+				gitArgs = append(gitArgs, "--force")
 			}
 			gitArgs = append(gitArgs, args...)
-
 			out, err := exec.Command("git", gitArgs...).CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("git push: %w\n%s", err, string(out))
@@ -226,14 +203,12 @@ func gitPushCommand() *cobra.Command {
 			return nil
 		},
 	}
-
-	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force push (with lease)")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force push")
 	return cmd
 }
 
 func gitPullCommand() *cobra.Command {
 	var rebase bool
-
 	cmd := &cobra.Command{
 		Use:   "pull",
 		Short: "Pull changes",
@@ -243,7 +218,6 @@ func gitPullCommand() *cobra.Command {
 				gitArgs = append(gitArgs, "--rebase")
 			}
 			gitArgs = append(gitArgs, args...)
-
 			out, err := exec.Command("git", gitArgs...).CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("git pull: %w\n%s", err, string(out))
@@ -252,100 +226,37 @@ func gitPullCommand() *cobra.Command {
 			return nil
 		},
 	}
-
 	cmd.Flags().BoolVarP(&rebase, "rebase", "r", false, "Rebase on pull")
 	return cmd
 }
 
 func gitRemoteCommand() *cobra.Command {
+	var verbose bool
 	cmd := &cobra.Command{
 		Use:   "remote",
 		Short: "Manage remotes",
-		Long: `Manage git remotes.
-
-Subcommands:
-  list      List remotes
-  add       Add a remote
-  remove    Remove a remote
-  set-url   Set remote URL
-`,
-	}
-	cmd.AddCommand(gitRemoteListCommand())
-	cmd.AddCommand(gitRemoteAddCommand())
-	cmd.AddCommand(gitRemoteRemoveCommand())
-	cmd.AddCommand(gitRemoteSetURLCommand())
-
-	return cmd
-}
-
-func gitRemoteListCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list",
-		Short: "List remotes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out, err := exec.Command("git", "remote", "-v").CombinedOutput()
+			gitArgs := []string{"remote"}
+			if verbose {
+				gitArgs = append(gitArgs, "-v")
+			}
+			if len(args) > 0 {
+				gitArgs = append(gitArgs, args...)
+			}
+			out, err := exec.Command("git", gitArgs...).CombinedOutput()
 			if err != nil {
-				return fmt.Errorf("git remote list: %w", err)
+				return fmt.Errorf("git remote: %w", err)
 			}
 			fmt.Print(string(out))
 			return nil
 		},
 	}
-}
-
-func gitRemoteAddCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "add <name> <url>",
-		Short: "Add a remote",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			out, err := exec.Command("git", "remote", "add", args[0], args[1]).CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("git remote add: %w\n%s", err, string(out))
-			}
-			fmt.Printf("Remote %q added: %s\n", args[0], args[1])
-			return nil
-		},
-	}
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 	return cmd
-}
-
-func gitRemoteRemoveCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "remove <name>",
-		Short: "Remove a remote",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			out, err := exec.Command("git", "remote", "remove", args[0]).CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("git remote remove: %w\n%s", err, string(out))
-			}
-			fmt.Printf("Remote %q removed\n", args[0])
-			return nil
-		},
-	}
-}
-
-func gitRemoteSetURLCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "set-url <name> <url>",
-		Short: "Set remote URL",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			out, err := exec.Command("git", "remote", "set-url", args[0], args[1]).CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("git remote set-url: %w\n%s", err, string(out))
-			}
-			fmt.Printf("Remote %q URL set to: %s\n", args[0], args[1])
-			return nil
-		},
-	}
 }
 
 func gitFetchCommand() *cobra.Command {
 	var all bool
-	var prune bool
-
 	cmd := &cobra.Command{
 		Use:   "fetch",
 		Short: "Fetch from remote",
@@ -354,11 +265,7 @@ func gitFetchCommand() *cobra.Command {
 			if all {
 				gitArgs = append(gitArgs, "--all")
 			}
-			if prune {
-				gitArgs = append(gitArgs, "--prune")
-			}
 			gitArgs = append(gitArgs, args...)
-
 			out, err := exec.Command("git", gitArgs...).CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("git fetch: %w\n%s", err, string(out))
@@ -367,28 +274,25 @@ func gitFetchCommand() *cobra.Command {
 			return nil
 		},
 	}
-
 	cmd.Flags().BoolVarP(&all, "all", "a", false, "Fetch all remotes")
-	cmd.Flags().BoolVarP(&prune, "prune", "p", false, "Prune remote-tracking refs")
 	return cmd
 }
 
 func gitStashCommand() *cobra.Command {
 	var save, pop bool
 	var message string
-
 	cmd := &cobra.Command{
 		Use:   "stash",
 		Short: "Stash changes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if save {
-				gitArgs := []string{"stash", "save"}
+				gitArgs := []string{"stash", "push"}
 				if message != "" {
-					gitArgs = append(gitArgs, message)
+					gitArgs = append(gitArgs, "-m", message)
 				}
 				out, err := exec.Command("git", gitArgs...).CombinedOutput()
 				if err != nil {
-					return fmt.Errorf("git stash save: %w\n%s", err, string(out))
+					return fmt.Errorf("git stash push: %w\n%s", err, string(out))
 				}
 				fmt.Print(string(out))
 			} else if pop {
@@ -407,7 +311,6 @@ func gitStashCommand() *cobra.Command {
 			return nil
 		},
 	}
-
 	cmd.Flags().BoolVarP(&save, "save", "s", false, "Stash changes")
 	cmd.Flags().BoolVarP(&pop, "pop", "p", false, "Pop stashed changes")
 	cmd.Flags().StringVarP(&message, "message", "m", "", "Stash message")
@@ -416,7 +319,6 @@ func gitStashCommand() *cobra.Command {
 
 func gitMergeCommand() *cobra.Command {
 	var noFF bool
-
 	cmd := &cobra.Command{
 		Use:   "merge <branch>",
 		Short: "Merge branches",
@@ -427,7 +329,6 @@ func gitMergeCommand() *cobra.Command {
 				gitArgs = append(gitArgs, "--no-ff")
 			}
 			gitArgs = append(gitArgs, args[0])
-
 			out, err := exec.Command("git", gitArgs...).CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("git merge: %w\n%s", err, string(out))
@@ -436,18 +337,29 @@ func gitMergeCommand() *cobra.Command {
 			return nil
 		},
 	}
-
 	cmd.Flags().BoolVarP(&noFF, "no-ff", "n", false, "No fast-forward")
 	return cmd
 }
 
+// detectPlatform returns "github" or "gitlab" based on the remote URL.
+func detectPlatform() (string, error) {
+	out, err := exec.Command("git", "remote", "get-url", "origin").CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("get remote URL: %w", err)
+	}
+	remoteURL := strings.TrimSpace(string(out))
+	if strings.Contains(remoteURL, "gitlab") {
+		return "gitlab", nil
+	}
+	return "github", nil
+}
+
 func gitPRCreateCommand() *cobra.Command {
 	var title, body, base string
-
 	cmd := &cobra.Command{
 		Use:   "pr-create",
-		Short: "Create a draft PR",
-		Long: `Create a pull request through the configured platform (GitHub/GitLab).
+		Short: "Create a pull/merge request",
+		Long: `Create a pull request (GitHub) or merge request (GitLab).
 
 Examples:
   lana git pr-create --title "Add feature X" --base main
@@ -457,65 +369,230 @@ Examples:
 			if title == "" {
 				return fmt.Errorf("--title is required")
 			}
+			platform, err := detectPlatform()
+			if err != nil {
+				return err
+			}
+			currentBranch, err := getCurrentBranch()
+			if err != nil {
+				return fmt.Errorf("get current branch: %w", err)
+			}
+			if base == "" {
+				base = "main"
+			}
 
-			fmt.Printf("Creating pull request: %q\n", title)
-			if base != "" {
-				fmt.Printf("  Base branch: %s\n", base)
+			switch platform {
+			case "github":
+				return createGitHubPR(cmd, title, body, currentBranch, base)
+			case "gitlab":
+				return createGitLabMR(cmd, title, body, currentBranch, base)
+			default:
+				return fmt.Errorf("unsupported platform: %s", platform)
 			}
-			if body != "" {
-				fmt.Printf("  Body: %s\n", body)
-			}
-
-			// Try to detect platform
-			remoteURL, _ := exec.Command("git", "remote", "get-url", "origin").CombinedOutput()
-			if len(remoteURL) > 0 && strings.Contains(string(remoteURL), "gitlab") {
-				fmt.Println("  Platform: GitLab (PR creation pending)")
-			} else {
-				fmt.Println("  Platform: GitHub (PR creation pending)")
-			}
-			return nil
 		},
 	}
-
-	cmd.Flags().StringVarP(&title, "title", "t", "", "PR title (required)")
-	cmd.Flags().StringVarP(&body, "body", "b", "", "PR body")
-	cmd.Flags().StringVarP(&base, "base", "B", "", "Base branch")
+	cmd.Flags().StringVarP(&title, "title", "t", "", "PR/MR title (required)")
+	cmd.Flags().StringVarP(&body, "body", "b", "", "PR/MR body/description")
+	cmd.Flags().StringVarP(&base, "base", "B", "", "Base branch (default: main)")
 	return cmd
+}
+
+func createGitHubPR(cmd *cobra.Command, title, body, head, base string) error {
+	owner, repo, err := ghclient.DetectOwnerRepo()
+	if err != nil {
+		return fmt.Errorf("detect GitHub repo: %w", err)
+	}
+	client := ghclient.FromEnv()
+	pr, err := client.CreatePR(cmd.Context(), owner, repo, ghclient.CreatePROptions{
+		Title: title,
+		Body:  body,
+		Head:  head,
+		Base:  base,
+		Draft: true,
+	})
+	if err != nil {
+		return fmt.Errorf("create GitHub PR: %w", err)
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Created GitHub PR #%d: %s\n", pr.Number, pr.Title)
+	fmt.Fprintf(cmd.OutOrStdout(), "  URL: %s\n", pr.HTMLURL)
+	fmt.Fprintf(cmd.OutOrStdout(), "  Head: %s -> Base: %s\n", pr.HeadRef, pr.BaseRef)
+	return nil
+}
+
+func createGitLabMR(cmd *cobra.Command, title, body, sourceBranch, targetBranch string) error {
+	projectPath, err := glclient.DetectProjectPath()
+	if err != nil {
+		return fmt.Errorf("detect GitLab project: %w", err)
+	}
+	client := glclient.FromEnv()
+	mr, err := client.CreateMR(cmd.Context(), projectPath, glclient.MROptions{
+		Title:        title,
+		Description:  body,
+		SourceBranch: sourceBranch,
+		TargetBranch: targetBranch,
+		Draft:        true,
+	})
+	if err != nil {
+		return fmt.Errorf("create GitLab MR: %w", err)
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Created GitLab MR !%d: %s\n", mr.IID, mr.Title)
+	fmt.Fprintf(cmd.OutOrStdout(), "  URL: %s\n", mr.WebURL)
+	fmt.Fprintf(cmd.OutOrStdout(), "  Source: %s -> Target: %s\n", mr.SourceBranch, mr.TargetBranch)
+	return nil
 }
 
 func gitPRListCommand() *cobra.Command {
 	var state string
-
 	cmd := &cobra.Command{
 		Use:   "pr-list",
-		Short: "List open PRs",
+		Short: "List open PRs/MRs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if state == "" {
 				state = "open"
 			}
-
-			fmt.Printf("Listing %s PRs...\n", state)
-			fmt.Println("  (GitHub/GitLab PR listing integration pending)")
-			return nil
+			platform, err := detectPlatform()
+			if err != nil {
+				return err
+			}
+			switch platform {
+			case "github":
+				return listGitHubPRs(cmd, state)
+			case "gitlab":
+				return listGitLabMRs(cmd, state)
+			default:
+				return fmt.Errorf("unsupported platform: %s", platform)
+			}
 		},
 	}
-
-	cmd.Flags().StringVarP(&state, "state", "s", "open", "PR state (open, closed)")
+	cmd.Flags().StringVarP(&state, "state", "s", "open", "PR/MR state (open, closed, merged)")
 	return cmd
+}
+
+func listGitHubPRs(cmd *cobra.Command, state string) error {
+	owner, repo, err := ghclient.DetectOwnerRepo()
+	if err != nil {
+		return fmt.Errorf("detect GitHub repo: %w", err)
+	}
+	client := ghclient.FromEnv()
+	prs, err := client.ListPRs(cmd.Context(), owner, repo, state, "", "")
+	if err != nil {
+		return fmt.Errorf("list GitHub PRs: %w", err)
+	}
+	if len(prs) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "No open PRs found.")
+		return nil
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "GitHub PRs (%d):\n\n", len(prs))
+	for _, pr := range prs {
+		draft := ""
+		if pr.Draft {
+			draft = " [draft]"
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "  #%d %s%s\n", pr.Number, pr.Title, draft)
+		fmt.Fprintf(cmd.OutOrStdout(), "    %s\n", pr.HTMLURL)
+	}
+	return nil
+}
+
+func listGitLabMRs(cmd *cobra.Command, state string) error {
+	projectPath, err := glclient.DetectProjectPath()
+	if err != nil {
+		return fmt.Errorf("detect GitLab project: %w", err)
+	}
+	client := glclient.FromEnv()
+	var mrState glclient.MROpenState
+	switch state {
+	case "open":
+		mrState = glclient.MRStateOpened
+	case "closed":
+		mrState = glclient.MRStateClosed
+	case "merged":
+		mrState = glclient.MRStateMerged
+	default:
+		mrState = glclient.MRStateOpened
+	}
+	mrs, err := client.ListMRs(cmd.Context(), projectPath, mrState)
+	if err != nil {
+		return fmt.Errorf("list GitLab MRs: %w", err)
+	}
+	if len(mrs) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "No open MRs found.")
+		return nil
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "GitLab MRs (%d):\n\n", len(mrs))
+	for _, mr := range mrs {
+		draft := ""
+		if mr.Draft {
+			draft = " [draft]"
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "  !%d %s%s\n", mr.IID, mr.Title, draft)
+		fmt.Fprintf(cmd.OutOrStdout(), "    %s\n", mr.WebURL)
+	}
+	return nil
 }
 
 func gitPRDiffCommand() *cobra.Command {
-
 	cmd := &cobra.Command{
 		Use:   "pr-diff <number>",
-		Short: "Show PR diff",
+		Short: "Show PR/MR diff",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Printf("Fetching diff for PR #%s...\n", args[0])
-			fmt.Println("  (GitHub/GitLab PR diff integration pending)")
-			return nil
+			platform, err := detectPlatform()
+			if err != nil {
+				return err
+			}
+			var number int
+			if _, err := fmt.Sscanf(args[0], "%d", &number); err != nil {
+				return fmt.Errorf("invalid PR number: %s", args[0])
+			}
+			switch platform {
+			case "github":
+				return showGitHubPRDiff(cmd, number)
+			case "gitlab":
+				return showGitLabMRDiff(cmd, number)
+			default:
+				return fmt.Errorf("unsupported platform: %s", platform)
+			}
 		},
 	}
-
 	return cmd
 }
+
+func showGitHubPRDiff(cmd *cobra.Command, number int) error {
+	owner, repo, err := ghclient.DetectOwnerRepo()
+	if err != nil {
+		return fmt.Errorf("detect GitHub repo: %w", err)
+	}
+	client := ghclient.FromEnv()
+	diff, err := client.GetPRDiff(cmd.Context(), owner, repo, number)
+	if err != nil {
+		return fmt.Errorf("get GitHub PR diff: %w", err)
+	}
+	fmt.Print(diff)
+	return nil
+}
+
+func showGitLabMRDiff(cmd *cobra.Command, number int) error {
+	projectPath, err := glclient.DetectProjectPath()
+	if err != nil {
+		return fmt.Errorf("detect GitLab project: %w", err)
+	}
+	client := glclient.FromEnv()
+	diff, err := client.GetMRDiff(cmd.Context(), projectPath, number)
+	if err != nil {
+		return fmt.Errorf("get GitLab MR diff: %w", err)
+	}
+	fmt.Print(diff)
+	return nil
+}
+
+func getCurrentBranch() (string, error) {
+	out, err := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD").CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("get current branch: %w", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// Suppress unused import warnings.
+var _ = json.Marshal

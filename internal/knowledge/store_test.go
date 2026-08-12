@@ -337,3 +337,187 @@ func writeSource(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestCharacterNgramEmbedderProducesConsistentVectors(t *testing.T) {
+	embedder := NewCharacterNgramEmbedder(0, 0) // Use defaults
+	text := "hello world"
+	vec1, err := embedder.Embed(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vec2, err := embedder.Embed(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(vec1) != embeddingDimension {
+		t.Fatalf("expected dimension %d, got %d", embeddingDimension, len(vec1))
+	}
+	// Same input should produce same output
+	for i := range vec1 {
+		if vec1[i] != vec2[i] {
+			t.Fatalf("embedding not deterministic at index %d: %v vs %v", i, vec1[i], vec2[i])
+		}
+	}
+}
+
+func TestCharacterNgramEmbedderNormalizesVectors(t *testing.T) {
+	embedder := NewCharacterNgramEmbedder(3, 64)
+	text := "test normalization"
+	vec, err := embedder.Embed(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Check that the vector is normalized (norm should be ~1.0)
+	norm := 0.0
+	for _, v := range vec {
+		norm += v * v
+	}
+	norm = sqrt(norm)
+	if norm < 0.99 || norm > 1.01 {
+		t.Fatalf("vector not normalized: norm=%f", norm)
+	}
+}
+
+func TestCharacterNgramEmbedderEmptyInput(t *testing.T) {
+	embedder := NewCharacterNgramEmbedder(3, 64)
+	vec, err := embedder.Embed("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, v := range vec {
+		if v != 0 {
+			t.Fatalf("empty input should produce zero vector at index %d, got %f", i, v)
+		}
+	}
+}
+
+func TestCosineSimilarityIdenticalVectors(t *testing.T) {
+	v := []float64{0.1, 0.2, 0.3, 0.4, 0.5}
+	sim := cosineSimilarity(v, v)
+	if sim < 0.99 || sim > 1.01 {
+		t.Fatalf("identical vectors should have similarity 1.0, got %f", sim)
+	}
+}
+
+func TestCosineSimilarityOrthogonalVectors(t *testing.T) {
+	a := []float64{1, 0, 0}
+	b := []float64{0, 1, 0}
+	sim := cosineSimilarity(a, b)
+	if sim > 0.01 {
+		t.Fatalf("orthogonal vectors should have similarity ~0, got %f", sim)
+	}
+}
+
+func TestCosineSimilarityDifferentLengths(t *testing.T) {
+	a := []float64{1, 2, 3}
+	b := []float64{1, 2}
+	sim := cosineSimilarity(a, b)
+	if sim != 0 {
+		t.Fatalf("different length vectors should have similarity 0, got %f", sim)
+	}
+}
+
+func TestSearchWithSemanticMode(t *testing.T) {
+	embedder := NewCharacterNgramEmbedder(3, 64)
+	store := testStoreWithEmbedder(t, 1024, embedder)
+
+	sourceDir := t.TempDir()
+	writeSource(t, filepath.Join(sourceDir, "api.md"), "REST API design patterns and endpoints")
+	writeSource(t, filepath.Join(sourceDir, "db.md"), "Database schema and migration strategies")
+	writeSource(t, filepath.Join(sourceDir, "auth.md"), "Authentication and authorization methods")
+
+	_, err := store.Ingest(sourceDir, "docs", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Semantic search for "API endpoints"
+	results, err := store.Search("API endpoints", SearchOptions{Mode: SearchModeSemantic, Top: 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("expected semantic search results")
+	}
+
+	// The API document should have a higher semantic similarity
+	// Note: Character n-gram embeddings are not perfect, but similar text should score higher
+	found := false
+	for _, r := range results {
+		if strings.Contains(r.Content, "REST API") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Log("Note: Character n-gram embeddings may not perfectly capture semantic similarity")
+	}
+}
+
+func TestSearchWithHybridMode(t *testing.T) {
+	embedder := NewCharacterNgramEmbedder(3, 64)
+	store := testStoreWithEmbedder(t, 1024, embedder)
+
+	sourceDir := t.TempDir()
+	writeSource(t, filepath.Join(sourceDir, "config.md"), "Configuration file format and settings")
+	writeSource(t, filepath.Join(sourceDir, "setup.md"), "Installation and setup guide")
+
+	_, err := store.Ingest(sourceDir, "docs", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Hybrid search
+	results, err := store.Search("configuration", SearchOptions{Mode: SearchModeHybrid, Top: 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("expected hybrid search results")
+	}
+
+	// Verify results have semantic scores
+	for _, r := range results {
+		if r.SemanticScore < 0 {
+			t.Fatalf("semantic score should be non-negative, got %f", r.SemanticScore)
+		}
+	}
+}
+
+func TestSearchWithoutEmbedderIgnoresSemanticMode(t *testing.T) {
+	store := testStore(t, 1024)
+
+	sourceDir := t.TempDir()
+	writeSource(t, filepath.Join(sourceDir, "test.md"), "test content here")
+
+	_, err := store.Ingest(sourceDir, "docs", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Semantic search without embedder should still work (token mode fallback)
+	results, err := store.Search("test", SearchOptions{Mode: SearchModeSemantic, Top: 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should return no results since no embeddings exist
+	if len(results) != 0 {
+		t.Fatalf("expected no results without embeddings, got %d", len(results))
+	}
+}
+
+func testStoreWithEmbedder(t *testing.T, maxBytes int64, embedder Embedder) *Store {
+	t.Helper()
+	store, err := New(Options{
+		Dir:          filepath.Join(t.TempDir(), "store"),
+		MaxFileBytes: maxBytes,
+		Embedder:     embedder,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return store
+}

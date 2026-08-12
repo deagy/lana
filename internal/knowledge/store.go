@@ -22,11 +22,12 @@ import (
 const (
 	indexFileName       = "index.json"
 	lockFileName        = ".index.lock"
-	currentIndexVersion = 2
+	currentIndexVersion = 3
 	defaultMaxFileBytes = int64(1 << 20) // 1 MiB keeps the on-disk index bounded.
 	defaultSnippetBytes = 1200
 	defaultMaxDocuments = 10_000
 	maxSourceNameRunes  = 256
+	embeddingDimension  = 64 // Dimension for character n-gram embeddings
 )
 
 var allowedExtensions = map[string]struct{}{
@@ -40,6 +41,7 @@ type Options struct {
 	MaxFileBytes    int64
 	MaxDocuments    int
 	MaxSnippetBytes int
+	Embedder        Embedder // Optional embedder for semantic search
 }
 
 // Store is a local JSON index. It is safe to create one for every command
@@ -49,6 +51,7 @@ type Store struct {
 	maxFileBytes    int64
 	maxDocuments    int
 	maxSnippetBytes int
+	embedder        Embedder // Optional embedder for semantic search
 }
 
 // New creates a store rooted at opts.Dir. The directory is not created until
@@ -70,7 +73,13 @@ func New(opts Options) (*Store, error) {
 	if opts.MaxDocuments <= 0 {
 		opts.MaxDocuments = defaultMaxDocuments
 	}
-	return &Store{dir: filepath.Clean(dir), maxFileBytes: opts.MaxFileBytes, maxDocuments: opts.MaxDocuments, maxSnippetBytes: opts.MaxSnippetBytes}, nil
+	return &Store{
+		dir:             filepath.Clean(dir),
+		maxFileBytes:    opts.MaxFileBytes,
+		maxDocuments:    opts.MaxDocuments,
+		maxSnippetBytes: opts.MaxSnippetBytes,
+		embedder:        opts.Embedder,
+	}, nil
 }
 
 // Dir returns the absolute local storage directory.
@@ -97,6 +106,101 @@ type Document struct {
 	ModifiedAt  time.Time `json:"modified_at"`
 	IndexedAt   time.Time `json:"indexed_at"`
 	Tags        []string  `json:"tags,omitempty"`
+	// Embedding is a fixed-dimensional vector representation of the document
+	// content. It is populated when an Embedder is configured and enables
+	// semantic search alongside the default token matching.
+	Embedding []float64 `json:"embedding,omitempty"`
+}
+
+// Embedding represents a fixed-dimensional vector.
+type Embedding = []float64
+
+// Embedder generates document embeddings from text content. Implementations
+// may be local (character n-grams) or remote (API-backed models).
+type Embedder interface {
+	// Embed returns a normalized vector for the given text.
+	Embed(text string) ([]float64, error)
+}
+
+// CharacterNgramEmbedder is a deterministic, offline embedder that hashes
+// character n-grams into a fixed-dimensional vector. It requires no network
+// access and produces reproducible embeddings for identical inputs.
+type CharacterNgramEmbedder struct {
+	NgramSize int
+	Dimension int
+}
+
+// NewCharacterNgramEmbedder creates an embedder with the given n-gram size and
+// output dimension. Defaults are 3 for n-grams and embeddingDimension for the
+// output size.
+func NewCharacterNgramEmbedder(ngramSize, dimension int) *CharacterNgramEmbedder {
+	if ngramSize <= 0 {
+		ngramSize = 3
+	}
+	if dimension <= 0 {
+		dimension = embeddingDimension
+	}
+	return &CharacterNgramEmbedder{
+		NgramSize: ngramSize,
+		Dimension: dimension,
+	}
+}
+
+// Embed generates a character n-gram embedding for the given text.
+func (e *CharacterNgramEmbedder) Embed(text string) ([]float64, error) {
+	vector := make([]float64, e.Dimension)
+	if text == "" || len(text) < e.NgramSize {
+		return vector, nil
+	}
+
+	// Generate character n-grams and hash them to vector indices
+	for i := 0; i <= len(text)-e.NgramSize; i++ {
+		ngram := text[i : i+e.NgramSize]
+		// Simple hash to distribute n-grams across the vector
+		hash := hashString(ngram)
+		// Use modulo with uint64 to avoid negative indices
+		index := int(hash % uint64(e.Dimension))
+		vector[index] += 1.0
+	}
+
+	// Normalize the vector
+	norm := 0.0
+	for _, v := range vector {
+		norm += v * v
+	}
+	norm = sqrt(norm)
+	if norm > 0 {
+		for i := range vector {
+			vector[i] /= norm
+		}
+	}
+
+	return vector, nil
+}
+
+// hashString returns a simple hash of the input string.
+func hashString(s string) uint64 {
+	var h uint64 = 14695981039346656037 // FNV offset basis
+	for i := 0; i < len(s); i++ {
+		h ^= uint64(s[i])
+		h *= 1099511628211 // FNV prime
+	}
+	return h
+}
+
+// sqrt computes the square root using Newton's method (no math import needed).
+func sqrt(x float64) float64 {
+	if x < 0 {
+		return 0
+	}
+	if x == 0 {
+		return 0
+	}
+	z := x / 2.0
+	for i := 0; i < 100; i++ {
+		z = (z + x/z) / 2.0
+	}
+	return z
 }
 
 type index struct {
@@ -298,7 +402,17 @@ func (s *Store) readDocument(source, path string, tags []string) (Document, erro
 	}
 	hash := hashBytes(data)
 	now := time.Now().UTC().Round(0)
-	return Document{ID: documentID(source, path), Source: source, Path: path, Content: string(data), ContentHash: hash, Size: int64(len(data)), ModifiedAt: info.ModTime().UTC().Round(0), IndexedAt: now, Tags: append([]string(nil), tags...)}, nil
+	doc := Document{ID: documentID(source, path), Source: source, Path: path, Content: string(data), ContentHash: hash, Size: int64(len(data)), ModifiedAt: info.ModTime().UTC().Round(0), IndexedAt: now, Tags: append([]string(nil), tags...)}
+
+	// Generate embedding if an embedder is configured
+	if s.embedder != nil && len(data) > 0 {
+		embedding, err := s.embedder.Embed(string(data))
+		if err == nil {
+			doc.Embedding = embedding
+		}
+	}
+
+	return doc, nil
 }
 
 // ListDocuments returns stable metadata order and never exposes mutable store
@@ -338,24 +452,39 @@ type Citation struct {
 	ContentHash string `json:"content_hash"`
 }
 
+// SearchMode selects the ranking strategy used by Search.
+type SearchMode int
+
+const (
+	// SearchModeTokens ranks by token matching only (default).
+	SearchModeTokens SearchMode = iota
+	// SearchModeSemantic uses embedding similarity for ranking.
+	SearchModeSemantic
+	// SearchModeHybrid combines token and semantic scores.
+	SearchModeHybrid
+)
+
 // SearchOptions constrains deterministic local retrieval.
 type SearchOptions struct {
 	Top    int
 	Source string
 	Tags   []string
+	Mode   SearchMode // Defaults to SearchModeTokens if unset.
 }
 
 // Result is a bounded retrieval passage plus its citation.
 type Result struct {
-	Score    int      `json:"score"`
-	Content  string   `json:"content"`
-	Tags     []string `json:"tags,omitempty"`
-	Citation Citation `json:"citation"`
+	Score         int      `json:"score"`
+	Content       string   `json:"content"`
+	Tags          []string `json:"tags,omitempty"`
+	Citation      Citation `json:"citation"`
+	SemanticScore float64  `json:"semantic_score,omitempty"` // Present in semantic/hybrid mode.
 }
 
 // Search performs deterministic case-insensitive token matching. Ties sort by
 // source, path, then document ID so identical stores always return the same
-// response.
+// response. When Mode is SearchModeSemantic or SearchModeHybrid, embeddings
+// are used for ranking alongside or in place of token scores.
 func (s *Store) Search(query string, opts SearchOptions) ([]Result, error) {
 	terms := searchTerms(query)
 	if len(terms) == 0 {
@@ -367,12 +496,31 @@ func (s *Store) Search(query string, opts SearchOptions) ([]Result, error) {
 	if opts.Top > 100 {
 		return nil, fmt.Errorf("top must be between 1 and 100")
 	}
+	if opts.Mode == 0 {
+		opts.Mode = SearchModeTokens
+	}
 	idx, err := s.load()
 	if err != nil {
 		return nil, err
 	}
 	tags := normalizeTags(opts.Tags)
-	results := make([]Result, 0)
+
+	// Generate query embedding if using semantic or hybrid mode
+	var queryEmbedding []float64
+	if opts.Mode != SearchModeTokens && s.embedder != nil {
+		queryEmbedding, err = s.embedder.Embed(query)
+		if err != nil {
+			return nil, fmt.Errorf("generate query embedding: %w", err)
+		}
+	}
+
+	type candidate struct {
+		doc      Document
+		token    int
+		semantic float64
+	}
+	candidates := make([]candidate, 0)
+
 	for _, doc := range idx.Documents {
 		if opts.Source != "" && doc.Source != opts.Source {
 			continue
@@ -380,12 +528,57 @@ func (s *Store) Search(query string, opts SearchOptions) ([]Result, error) {
 		if !containsAllTags(doc.Tags, tags) {
 			continue
 		}
-		score := score(doc, terms)
-		if score == 0 {
-			continue
+
+		tokenScore := score(doc, terms)
+		semanticScore := 0.0
+
+		if opts.Mode == SearchModeSemantic || opts.Mode == SearchModeHybrid {
+			if len(doc.Embedding) == 0 {
+				continue // Skip documents without embeddings in semantic mode
+			}
+			semanticScore = cosineSimilarity(queryEmbedding, doc.Embedding)
 		}
-		results = append(results, Result{Score: score, Content: truncateUTF8(doc.Content, s.maxSnippetBytes), Tags: append([]string(nil), doc.Tags...), Citation: Citation{Source: doc.Source, Path: doc.Path, DocumentID: doc.ID, ChunkID: doc.ID, ContentHash: doc.ContentHash}})
+
+		switch opts.Mode {
+		case SearchModeSemantic:
+			if semanticScore < 0.1 {
+				continue // Skip low-similarity results
+			}
+			candidates = append(candidates, candidate{doc: doc, token: 0, semantic: semanticScore})
+		case SearchModeHybrid:
+			if tokenScore == 0 && semanticScore < 0.1 {
+				continue
+			}
+			candidates = append(candidates, candidate{doc: doc, token: tokenScore, semantic: semanticScore})
+		default: // SearchModeTokens
+			if tokenScore == 0 {
+				continue
+			}
+			candidates = append(candidates, candidate{doc: doc, token: tokenScore, semantic: 0})
+		}
 	}
+
+	results := make([]Result, 0, len(candidates))
+	for _, c := range candidates {
+		var finalScore float64
+		switch opts.Mode {
+		case SearchModeSemantic:
+			finalScore = c.semantic * 1000 // Scale to match token score range
+		case SearchModeHybrid:
+			finalScore = float64(c.token) + c.semantic*100
+		default:
+			finalScore = float64(c.token)
+		}
+
+		results = append(results, Result{
+			Score:         int(finalScore),
+			Content:       truncateUTF8(c.doc.Content, s.maxSnippetBytes),
+			Tags:          append([]string(nil), c.doc.Tags...),
+			Citation:      Citation{Source: c.doc.Source, Path: c.doc.Path, DocumentID: c.doc.ID, ChunkID: c.doc.ID, ContentHash: c.doc.ContentHash},
+			SemanticScore: c.semantic,
+		})
+	}
+
 	sort.Slice(results, func(i, j int) bool {
 		if results[i].Score != results[j].Score {
 			return results[i].Score > results[j].Score
@@ -399,10 +592,30 @@ func (s *Store) Search(query string, opts SearchOptions) ([]Result, error) {
 		}
 		return a.DocumentID < b.DocumentID
 	})
+
 	if len(results) > opts.Top {
 		results = results[:opts.Top]
 	}
 	return results, nil
+}
+
+// cosineSimilarity computes the cosine similarity between two vectors.
+func cosineSimilarity(a, b []float64) float64 {
+	if len(a) != len(b) {
+		return 0
+	}
+	dot := 0.0
+	normA := 0.0
+	normB := 0.0
+	for i := range a {
+		dot += a[i] * b[i]
+		normA += a[i] * a[i]
+		normB += b[i] * b[i]
+	}
+	if normA == 0 || normB == 0 {
+		return 0
+	}
+	return dot / (sqrt(normA) * sqrt(normB))
 }
 
 // RemoveDocument deletes a single indexed document. It is deliberately

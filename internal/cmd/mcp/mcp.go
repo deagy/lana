@@ -2,6 +2,7 @@
 package mcp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,43 +11,30 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/deagy/lana/internal/mcp"
 	"github.com/deagy/lana/pkg/config"
 )
 
-// MCP server communication types
-type mcpMessage struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      *int            `json:"id,omitempty"`
-	Method  string          `json:"method,omitempty"`
-	Params  json.RawMessage `json:"params,omitempty"`
-	Result  json.RawMessage `json:"result,omitempty"`
-	Error   *mcpError       `json:"error,omitempty"`
+// serverTimeout is the default per-request timeout for MCP calls.
+const serverTimeout = 30 * time.Second
+
+// serverManagerKey is the context key used to store the ServerManager in the
+// cobra command context so all subcommands share a single manager.
+type serverManagerKey struct{}
+
+// newServerManager builds a fresh ServerManager and stores it on the command
+// context so every subcommand reuses the same connection pool.
+func newServerManager() *mcp.ServerManager {
+	return mcp.NewServerManager(serverTimeout)
 }
 
-type mcpError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-type mcpResourceListResult struct {
-	Resources []mcpResource `json:"resources"`
-}
-
-type mcpResource struct {
-	Name        string `json:"name"`
-	URI         string `json:"uri"`
-	Description string `json:"description,omitempty"`
-	MimeType    string `json:"mimeType,omitempty"`
-}
-
-type mcpResourceReadResult struct {
-	Contents []mcpResourceContent `json:"contents"`
-}
-
-type mcpResourceContent struct {
-	URI      string `json:"uri"`
-	MimeType string `json:"mimeType,omitempty"`
-	Text     string `json:"text,omitempty"`
+// withServerManager returns the ServerManager from the command context, or a
+// fresh one if none was set.
+func withServerManager(cmd *cobra.Command) *mcp.ServerManager {
+	if mgr, ok := cmd.Context().Value(serverManagerKey{}).(*mcp.ServerManager); ok && mgr != nil {
+		return mgr
+	}
+	return newServerManager()
 }
 
 // NewCommand creates the mcp command group.
@@ -73,6 +61,17 @@ Configure MCP servers in ~/.config/lana/config.yaml:
         command: my-mcp-server
 `,
 	}
+
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
+		mgr := newServerManager()
+		cmd.SetContext(context.WithValue(cmd.Context(), serverManagerKey{}, mgr))
+		return nil
+	}
+	cmd.PersistentPostRunE = func(cmd *cobra.Command, _ []string) error {
+		mgr := withServerManager(cmd)
+		return mgr.Close(context.Background())
+	}
+
 	cmd.AddCommand(listResourcesCommand())
 	cmd.AddCommand(readResourceCommand())
 	cmd.AddCommand(listTemplatesCommand())
@@ -113,21 +112,50 @@ func listResourcesCommand() *cobra.Command {
 				return nil
 			}
 
-			if jsonOutput {
-				data, _ := json.MarshalIndent(config.RedactMCPServers(servers), "", "  ")
-				fmt.Println(string(data))
-				return nil
-			}
+			mgr := withServerManager(cmd)
+			ctx, cancel := context.WithTimeout(cmd.Context(), serverTimeout)
+			defer cancel()
 
-			fmt.Printf("MCP Servers (%d):\n\n", len(servers))
-			for _, s := range config.RedactMCPServers(servers) {
-				fmt.Printf("  Server: %s\n", s.Name)
+			for _, s := range servers {
+				srvCfg := mcp.ServerConfig{
+					Name: s.Name, URI: s.URI, Stdio: s.Stdio,
+					Command: s.Command, Args: s.Args,
+				}
+
+				client, err := mgr.Connect(ctx, s.Name, srvCfg, false)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "  [%s] connect failed: %v\n", s.Name, redactErr(err))
+					continue
+				}
+
+				resources, err := client.ListResources(ctx)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "  [%s] list-resources failed: %v\n", s.Name, err)
+					continue
+				}
+
+				if jsonOutput {
+					data, _ := json.MarshalIndent(resources, "", "  ")
+					fmt.Println(string(data))
+					continue
+				}
+
+				fmt.Printf("Server: %s\n", s.Name)
 				if s.URI != "" {
-					fmt.Printf("    URI:    %s\n", s.URI)
+					fmt.Printf("  URI: %s\n", config.RedactURI(s.URI))
 				}
-				if s.Stdio {
-					fmt.Printf("    Transport: stdio\n")
+				if len(resources) == 0 {
+					fmt.Println("  Resources: (none)")
+				} else {
+					fmt.Printf("  Resources (%d):\n", len(resources))
+					for _, r := range resources {
+						fmt.Printf("    - %s (%s)\n", r.Name, r.URI)
+						if r.Description != "" {
+							fmt.Printf("      %s\n", r.Description)
+						}
+					}
 				}
+				fmt.Println()
 			}
 			return nil
 		},
@@ -135,7 +163,7 @@ func listResourcesCommand() *cobra.Command {
 
 	cmd.Flags().StringVarP(&server, "server", "s", "", "MCP server name")
 	cmd.Flags().StringVarP(&configPath, "config", "c", "", "Config file path")
-	cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output as JSON")
 	return cmd
 }
 
@@ -144,7 +172,7 @@ func readResourceCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "read-resource [flags]",
-		Short: "Read an MCP resource",
+		Short: "Read an MCP server resource",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if server == "" {
 				return fmt.Errorf("--server is required")
@@ -159,15 +187,30 @@ func readResourceCommand() *cobra.Command {
 				return fmt.Errorf("MCP server not found: %s", server)
 			}
 
-			fmt.Printf("Resource: %s\n", config.RedactURI(uri))
-			fmt.Printf("Server:   %s\n", server)
-			fmt.Println("  (MCP client integration pending)")
-			fmt.Println()
-			fmt.Println("To configure MCP servers, add to ~/.config/lana/config.yaml:")
-			fmt.Println("  mcp:")
-			fmt.Println("    servers:")
-			fmt.Println("      - name: my-server")
-			fmt.Println("        uri: http://localhost:3000/mcp")
+			mgr := withServerManager(cmd)
+			ctx, cancel := context.WithTimeout(cmd.Context(), serverTimeout)
+			defer cancel()
+
+			srvCfg := mcp.ServerConfig{
+				Name: s.Name, URI: s.URI, Stdio: s.Stdio,
+				Command: s.Command, Args: s.Args,
+			}
+
+			client, err := mgr.Connect(ctx, s.Name, srvCfg, false)
+			if err != nil {
+				return fmt.Errorf("connect to %s: %w", server, redactErr(err))
+			}
+
+			result, err := client.ReadResource(ctx, uri)
+			if err != nil {
+				return fmt.Errorf("read resource %q: %w", uri, err)
+			}
+
+			for _, c := range result.Contents {
+				if c.Text != "" {
+					fmt.Print(c.Text)
+				}
+			}
 			return nil
 		},
 	}
@@ -184,7 +227,7 @@ func listTemplatesCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "list-templates [flags]",
-		Short: "List MCP resource templates",
+		Short: "List MCP server resource templates (prompts)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := getDefaultConfig(configPath)
 
@@ -204,15 +247,57 @@ func listTemplatesCommand() *cobra.Command {
 				return nil
 			}
 
-			if jsonOutput {
-				data, _ := json.MarshalIndent(config.RedactMCPServers(servers), "", "  ")
-				fmt.Println(string(data))
-				return nil
-			}
+			mgr := withServerManager(cmd)
+			ctx, cancel := context.WithTimeout(cmd.Context(), serverTimeout)
+			defer cancel()
 
-			fmt.Printf("MCP Servers (%d):\n\n", len(servers))
-			for _, s := range config.RedactMCPServers(servers) {
-				fmt.Printf("  Server: %s\n", s.Name)
+			for _, s := range servers {
+				srvCfg := mcp.ServerConfig{
+					Name: s.Name, URI: s.URI, Stdio: s.Stdio,
+					Command: s.Command, Args: s.Args,
+				}
+
+				client, err := mgr.Connect(ctx, s.Name, srvCfg, false)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "  [%s] connect failed: %v\n", s.Name, redactErr(err))
+					continue
+				}
+
+				prompts, err := client.ListPrompts(ctx)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "  [%s] list-prompts failed: %v\n", s.Name, err)
+					continue
+				}
+
+				if jsonOutput {
+					data, _ := json.MarshalIndent(prompts, "", "  ")
+					fmt.Println(string(data))
+					continue
+				}
+
+				fmt.Printf("Server: %s\n", s.Name)
+				if len(prompts) == 0 {
+					fmt.Println("  Templates: (none)")
+				} else {
+					fmt.Printf("  Templates (%d):\n", len(prompts))
+					for _, p := range prompts {
+						fmt.Printf("    - %s\n", p.Name)
+						if p.Description != "" {
+							fmt.Printf("      %s\n", p.Description)
+						}
+						if len(p.Arguments) > 0 {
+							fmt.Println("      Arguments:")
+							for _, a := range p.Arguments {
+								req := ""
+								if a.Required {
+									req = " (required)"
+								}
+								fmt.Printf("        - %s%s\n", a.Name, req)
+							}
+						}
+					}
+				}
+				fmt.Println()
 			}
 			return nil
 		},
@@ -220,16 +305,17 @@ func listTemplatesCommand() *cobra.Command {
 
 	cmd.Flags().StringVarP(&server, "server", "s", "", "MCP server name")
 	cmd.Flags().StringVarP(&configPath, "config", "c", "", "Config file path")
-	cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output as JSON")
 	return cmd
 }
 
 func listToolsCommand() *cobra.Command {
 	var server, configPath string
+	var jsonOutput bool
 
 	cmd := &cobra.Command{
 		Use:   "list-tools [flags]",
-		Short: "List available MCP tools",
+		Short: "List MCP server tools",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := getDefaultConfig(configPath)
 
@@ -249,12 +335,47 @@ func listToolsCommand() *cobra.Command {
 				return nil
 			}
 
-			fmt.Printf("MCP Servers (%d):\n\n", len(servers))
-			for _, s := range config.RedactMCPServers(servers) {
-				fmt.Printf("  Server: %s\n", s.Name)
-				if s.URI != "" {
-					fmt.Printf("    URI: %s\n", s.URI)
+			mgr := withServerManager(cmd)
+			ctx, cancel := context.WithTimeout(cmd.Context(), serverTimeout)
+			defer cancel()
+
+			for _, s := range servers {
+				srvCfg := mcp.ServerConfig{
+					Name: s.Name, URI: s.URI, Stdio: s.Stdio,
+					Command: s.Command, Args: s.Args,
 				}
+
+				client, err := mgr.Connect(ctx, s.Name, srvCfg, false)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "  [%s] connect failed: %v\n", s.Name, redactErr(err))
+					continue
+				}
+
+				tools, err := client.ListTools(ctx)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "  [%s] list-tools failed: %v\n", s.Name, err)
+					continue
+				}
+
+				if jsonOutput {
+					data, _ := json.MarshalIndent(tools, "", "  ")
+					fmt.Println(string(data))
+					continue
+				}
+
+				fmt.Printf("Server: %s\n", s.Name)
+				if len(tools) == 0 {
+					fmt.Println("  Tools: (none)")
+				} else {
+					fmt.Printf("  Tools (%d):\n", len(tools))
+					for _, t := range tools {
+						fmt.Printf("    - %s\n", t.Name)
+						if t.Description != "" {
+							fmt.Printf("      %s\n", t.Description)
+						}
+					}
+				}
+				fmt.Println()
 			}
 			return nil
 		},
@@ -262,6 +383,7 @@ func listToolsCommand() *cobra.Command {
 
 	cmd.Flags().StringVarP(&server, "server", "s", "", "MCP server name")
 	cmd.Flags().StringVarP(&configPath, "config", "c", "", "Config file path")
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output as JSON")
 	return cmd
 }
 
@@ -285,11 +407,44 @@ func callToolCommand() *cobra.Command {
 				return fmt.Errorf("MCP server not found: %s", server)
 			}
 
-			fmt.Printf("Calling tool %q on server %s...\n", toolName, server)
-			if toolArgsStr != "" {
-				fmt.Println("  Args: supplied (values withheld)")
+			mgr := withServerManager(cmd)
+			ctx, cancel := context.WithTimeout(cmd.Context(), serverTimeout)
+			defer cancel()
+
+			srvCfg := mcp.ServerConfig{
+				Name: s.Name, URI: s.URI, Stdio: s.Stdio,
+				Command: s.Command, Args: s.Args,
 			}
-			fmt.Println("  (MCP tool calling integration pending)")
+
+			client, err := mgr.Connect(ctx, s.Name, srvCfg, false)
+			if err != nil {
+				return fmt.Errorf("connect to %s: %w", server, redactErr(err))
+			}
+
+			var argsMap any
+			if toolArgsStr != "" {
+				if err := json.Unmarshal([]byte(toolArgsStr), &argsMap); err != nil {
+					return fmt.Errorf("parse tool args: %w", err)
+				}
+			}
+
+			result, err := client.CallTool(ctx, toolName, argsMap)
+			if err != nil {
+				return fmt.Errorf("call tool %q: %w", toolName, err)
+			}
+
+			for _, c := range result.Content {
+				if c.Type == "text" && c.Text != "" {
+					fmt.Println(c.Text)
+				} else if c.Type == "image" && c.Image != nil {
+					fmt.Printf("[image: %s %s]\n", c.Image.MIMEType, c.Image.Data)
+				} else if c.Text != "" {
+					fmt.Println(c.Text)
+				}
+			}
+			if result.IsError {
+				return fmt.Errorf("tool %q reported an error", toolName)
+			}
 			return nil
 		},
 	}
@@ -326,14 +481,47 @@ func serverInfoCommand() *cobra.Command {
 				return nil
 			}
 
-			fmt.Printf("MCP Servers (%d):\n\n", len(servers))
-			for _, s := range config.RedactMCPServers(servers) {
-				fmt.Printf("  Server: %s\n", s.Name)
+			mgr := withServerManager(cmd)
+			ctx, cancel := context.WithTimeout(cmd.Context(), serverTimeout)
+			defer cancel()
+
+			for _, s := range servers {
+				srvCfg := mcp.ServerConfig{
+					Name: s.Name, URI: s.URI, Stdio: s.Stdio,
+					Command: s.Command, Args: s.Args,
+				}
+
+				client, err := mgr.Connect(ctx, s.Name, srvCfg, false)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "  [%s] connect failed: %v\n", s.Name, redactErr(err))
+					continue
+				}
+
+				info := client.ServerInfo()
+				caps := client.Capabilities()
+
+				fmt.Printf("Server: %s\n", s.Name)
 				if s.URI != "" {
-					fmt.Printf("    URI: %s\n", s.URI)
+					fmt.Printf("  URI: %s\n", config.RedactURI(s.URI))
 				}
 				if s.Stdio {
-					fmt.Printf("    Transport: stdio\n")
+					fmt.Println("  Transport: stdio")
+				}
+				fmt.Printf("  Protocol: %s\n", info.Name)
+				fmt.Printf("  Version: %s\n", info.Version)
+				fmt.Println()
+				fmt.Println("  Capabilities:")
+				if caps.Tools != nil {
+					fmt.Println("    tools: yes")
+				}
+				if caps.Resources != nil {
+					fmt.Println("    resources: yes")
+				}
+				if caps.Prompts != nil {
+					fmt.Println("    prompts: yes")
+				}
+				if caps.Tools == nil && caps.Resources == nil && caps.Prompts == nil {
+					fmt.Println("    (none advertised)")
 				}
 				fmt.Println()
 			}
@@ -366,7 +554,30 @@ func getDefaultConfig(path string) *config.Config {
 	return cfg
 }
 
-// mcpMessage, mcpError, mcpResourceListResult, mcpResource, mcpResourceReadResult, mcpResourceContent
-// are used for MCP protocol support.
-var _ = time.Now
-var _ = strings.ToLower
+// redactErr wraps an error message, redacting any embedded URIs so credentials
+// never reach the user. It is a no-op when err is nil.
+func redactErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	// Extract and redact any URI found in the error message.
+	for _, scheme := range []string{"https://", "http://"} {
+		for strings.Contains(msg, scheme) {
+			idx := strings.Index(msg, scheme)
+			rest := msg[idx+len(scheme):]
+			// Find end of URI (space, quote, or end of string)
+			endIdx := len(rest)
+			for i, c := range rest {
+				if c == ' ' || c == '"' || c == '`' {
+					endIdx = i
+					break
+				}
+			}
+			uri := rest[:endIdx]
+			redacted := config.RedactURI(uri)
+			msg = msg[:idx] + scheme + redacted + msg[idx+len(scheme)+endIdx:]
+		}
+	}
+	return fmt.Errorf("%s", msg)
+}

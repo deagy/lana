@@ -210,7 +210,7 @@ func TestConfigWriteToPathRoundTripsServersAndExecutionEnvironment(t *testing.T)
 	if err != nil {
 		t.Fatalf("Load returned an error: %v", err)
 	}
-	if !reflect.DeepEqual(loaded.MCP.Servers, cfg.MCP.Servers) {
+	if !mcpServersEqual(loaded.MCP.Servers, cfg.MCP.Servers) {
 		t.Errorf("MCP servers did not round-trip: got %#v want %#v", loaded.MCP.Servers, cfg.MCP.Servers)
 	}
 	if !reflect.DeepEqual(loaded.Exec.AllowedEnvPrefixes, cfg.Exec.AllowedEnvPrefixes) {
@@ -351,6 +351,28 @@ func TestRedactURI(t *testing.T) {
 	}
 }
 
+// mcpServersEqual compares two slices of MCPServerConfig, treating nil and empty
+// Args slices as equal (YAML round-trip converts nil to empty).
+func mcpServersEqual(a, b []MCPServerConfig) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Name != b[i].Name || a[i].URI != b[i].URI || a[i].Stdio != b[i].Stdio {
+			return false
+		}
+		aArgs, bArgs := a[i].Args, b[i].Args
+		// Treat nil and empty slices as equal (YAML round-trip converts nil to empty).
+		if (aArgs == nil) == (bArgs == nil) {
+			if !reflect.DeepEqual(aArgs, bArgs) {
+				return false
+			}
+		} else if len(aArgs) != len(bArgs) {
+			return false
+		}
+	}
+	return true
+}
 func TestResolveRejectsMissingExplicitConfig(t *testing.T) {
 	_, err := Resolve(ResolveOptions{
 		ConfigPath:       filepath.Join(t.TempDir(), "missing.yaml"),
@@ -360,4 +382,5 @@ func TestResolveRejectsMissingExplicitConfig(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error for missing explicit config")
 	}
+
 }

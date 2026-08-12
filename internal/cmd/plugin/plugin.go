@@ -4,14 +4,17 @@ package plugin
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	internalplugin "github.com/deagy/lana/internal/plugin"
 )
 
-const pluginsDir = ".lana/plugins"
+var pluginsDir = ".lana/plugins"
 
 // PluginManifest represents a plugin's manifest file.
 type PluginManifest struct {
@@ -30,6 +33,8 @@ func NewCommand() *cobra.Command {
 	}
 	cmd.AddCommand(pluginListCommand())
 	cmd.AddCommand(pluginInstallCommand())
+	cmd.AddCommand(pluginGitHubSearchCommand())
+	cmd.AddCommand(pluginGitHubInstallCommand())
 	cmd.AddCommand(pluginEnableCommand())
 	cmd.AddCommand(pluginDisableCommand())
 	cmd.AddCommand(pluginRemoveCommand())
@@ -46,33 +51,33 @@ func pluginListCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			plugins, err := loadPlugins()
 			if err != nil {
-				fmt.Println("No plugins installed.")
+				fmt.Fprintln(cmd.OutOrStdout(), "No plugins installed.")
 				return nil
 			}
 
 			if len(plugins) == 0 {
-				fmt.Println("No plugins installed.")
-				fmt.Println("To install: lana plugin install <local-path>")
+				fmt.Fprintln(cmd.OutOrStdout(), "No plugins installed.")
+				fmt.Fprintln(cmd.OutOrStdout(), "To install: lana plugin install <local-path>")
 				return nil
 			}
 
 			if jsonOutput {
 				data, _ := json.MarshalIndent(plugins, "", "  ")
-				fmt.Println(string(data))
+				fmt.Fprintln(cmd.OutOrStdout(), string(data))
 				return nil
 			}
 
-			fmt.Printf("Installed plugins (%d):\n\n", len(plugins))
+			fmt.Fprintf(cmd.OutOrStdout(), "Installed plugins (%d):\n\n", len(plugins))
 			for _, p := range plugins {
 				status := "on"
 				if !p.Enabled {
 					status = "off"
 				}
-				fmt.Printf("  [%s] %s v%s\n", status, p.Name, p.Version)
+				fmt.Fprintf(cmd.OutOrStdout(), "  [%s] %s v%s\n", status, p.Name, p.Version)
 				if p.Description != "" {
-					fmt.Printf("      %s\n", p.Description)
+					fmt.Fprintf(cmd.OutOrStdout(), "      %s\n", p.Description)
 				}
-				fmt.Printf("      Path: %s\n\n", p.Path)
+				fmt.Fprintf(cmd.OutOrStdout(), "      Path: %s\n\n", p.Path)
 			}
 			return nil
 		},
@@ -145,8 +150,8 @@ func pluginInstallCommand() *cobra.Command {
 				return fmt.Errorf("save plugins: %w", err)
 			}
 
-			fmt.Printf("Plugin installed: %s v%s\n", manifest.Name, manifest.Version)
-			fmt.Printf("  Path: %s\n", destDir)
+			fmt.Fprintf(cmd.OutOrStdout(), "Plugin installed: %s v%s\n", manifest.Name, manifest.Version)
+			fmt.Fprintf(cmd.OutOrStdout(), "  Path: %s\n", destDir)
 			return nil
 		},
 	}
@@ -165,7 +170,7 @@ func pluginEnableCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name = args[0]
-			return togglePlugin(name, true)
+			return togglePlugin(cmd.OutOrStdout(), name, true)
 		},
 	}
 	return cmd
@@ -180,7 +185,7 @@ func pluginDisableCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name = args[0]
-			return togglePlugin(name, false)
+			return togglePlugin(cmd.OutOrStdout(), name, false)
 		},
 	}
 	return cmd
@@ -223,7 +228,7 @@ func pluginRemoveCommand() *cobra.Command {
 				return fmt.Errorf("save plugins: %w", err)
 			}
 
-			fmt.Printf("Plugin removed: %s\n", name)
+			fmt.Fprintf(cmd.OutOrStdout(), "Plugin removed: %s\n", name)
 			return nil
 		},
 	}
@@ -252,16 +257,16 @@ func pluginInfoCommand() *cobra.Command {
 				if p.Name == name {
 					if jsonOutput {
 						data, _ := json.MarshalIndent(p, "", "  ")
-						fmt.Println(string(data))
+						fmt.Fprintln(cmd.OutOrStdout(), string(data))
 						return nil
 					}
 
-					fmt.Printf("Name:        %s\n", p.Name)
-					fmt.Printf("Version:     %s\n", p.Version)
-					fmt.Printf("Enabled:     %v\n", p.Enabled)
-					fmt.Printf("Path:        %s\n", p.Path)
+					fmt.Fprintf(cmd.OutOrStdout(), "Name:        %s\n", p.Name)
+					fmt.Fprintf(cmd.OutOrStdout(), "Version:     %s\n", p.Version)
+					fmt.Fprintf(cmd.OutOrStdout(), "Enabled:     %v\n", p.Enabled)
+					fmt.Fprintf(cmd.OutOrStdout(), "Path:        %s\n", p.Path)
 					if p.Description != "" {
-						fmt.Printf("Description: %s\n", p.Description)
+						fmt.Fprintf(cmd.OutOrStdout(), "Description: %s\n", p.Description)
 					}
 					return nil
 				}
@@ -302,7 +307,7 @@ func savePlugins(plugins []PluginManifest) error {
 	return os.WriteFile(filepath.Join(pluginsDirAbs, "plugins.json"), data, 0644)
 }
 
-func togglePlugin(name string, enabled bool) error {
+func togglePlugin(w io.Writer, name string, enabled bool) error {
 	plugins, err := loadPlugins()
 	if err != nil {
 		return err
@@ -329,7 +334,7 @@ func togglePlugin(name string, enabled bool) error {
 	if enabled {
 		action = "enabled"
 	}
-	fmt.Printf("Plugin %s %s\n", name, action)
+	fmt.Fprintf(w, "Plugin %s %s\n", name, action)
 	return nil
 }
 
@@ -355,4 +360,96 @@ func copyDir(src, dst string) error {
 		}
 		return os.WriteFile(dstPath, data, info.Mode())
 	})
+}
+
+func pluginGitHubSearchCommand() *cobra.Command {
+	var limit int
+	var query string
+	var jsonOutput bool
+
+	cmd := &cobra.Command{
+		Use:   "github-search [query]",
+		Short: "Search for plugins on GitHub",
+		Long:  "Search for Lana plugins available on GitHub repositories",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				query = args[0]
+			}
+
+			token := os.Getenv("GITHUB_TOKEN")
+			client := internalplugin.NewGitHubPluginClient(token)
+
+			plugins, err := client.SearchPlugins(query, limit)
+			if err != nil {
+				return fmt.Errorf("search plugins: %w", err)
+			}
+
+			if len(plugins) == 0 {
+				fmt.Fprintln(cmd.OutOrStdout(), "No plugins found.")
+				return nil
+			}
+
+			if jsonOutput {
+				data, _ := json.MarshalIndent(plugins, "", "  ")
+				fmt.Fprintln(cmd.OutOrStdout(), string(data))
+				return nil
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "Found %d plugins:\n\n", len(plugins))
+			for _, p := range plugins {
+				fmt.Fprintf(cmd.OutOrStdout(), "  [%s]\n", p.Name)
+				if p.Description != "" {
+					fmt.Fprintf(cmd.OutOrStdout(), "    %s\n", p.Description)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "    Repository: %s\n\n", p.Repository)
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().IntVarP(&limit, "limit", "l", 10, "Maximum results (1-100)")
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output in JSON format")
+	return cmd
+}
+
+func pluginGitHubInstallCommand() *cobra.Command {
+	var version string
+
+	cmd := &cobra.Command{
+		Use:   "github-install <owner/repo> [version]",
+		Short: "Install a plugin from GitHub",
+		Long:  "Install a Lana plugin from a GitHub repository release",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			repo := args[0]
+			parts := strings.SplitN(repo, "/", 2)
+			if len(parts) != 2 {
+				return fmt.Errorf("invalid repository format: %s (expected owner/repo)", repo)
+			}
+
+			owner, repoName := parts[0], parts[1]
+			if version == "" {
+				version = "latest"
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "Installing plugin from %s@%s...\n", repo, version)
+
+			token := os.Getenv("GITHUB_TOKEN")
+			client := internalplugin.NewGitHubPluginClient(token)
+
+			destDir := filepath.Join(pluginsDir, repoName)
+			archivePath, err := client.DownloadPluginArchive(owner, repoName, version, destDir)
+			if err != nil {
+				return fmt.Errorf("download plugin: %w", err)
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "Plugin downloaded: %s\n", archivePath)
+			fmt.Fprintf(cmd.OutOrStdout(), "Note: Extract the archive and run 'lana plugin install %s' to complete installation\n", destDir)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&version, "version", "v", "", "Specific version to install (default: latest)")
+	return cmd
 }

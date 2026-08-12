@@ -77,6 +77,7 @@ func searchCommand(storePath *string) *cobra.Command {
 	var top int
 	var source string
 	var tags []string
+	var mode string
 	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "search <query>",
@@ -87,7 +88,18 @@ func searchCommand(storePath *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			results, err := knowledgeStore.Search(args[0], store.SearchOptions{Top: top, Source: source, Tags: tags})
+			searchMode := store.SearchModeTokens
+			switch mode {
+			case "semantic":
+				searchMode = store.SearchModeSemantic
+			case "hybrid":
+				searchMode = store.SearchModeHybrid
+			case "tokens", "":
+				searchMode = store.SearchModeTokens
+			default:
+				return fmt.Errorf("invalid search mode: %s (valid: tokens, semantic, hybrid)", mode)
+			}
+			results, err := knowledgeStore.Search(args[0], store.SearchOptions{Top: top, Source: source, Tags: tags, Mode: searchMode})
 			if err != nil {
 				return err
 			}
@@ -104,7 +116,21 @@ func searchCommand(storePath *string) *cobra.Command {
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "Search results for %s (%d found):\n\n", terminalText(args[0]), len(results))
 			for _, result := range results {
-				fmt.Fprintf(cmd.OutOrStdout(), "[%s] score=%d\n  citation: source=%s path=%s document=%s hash=%s\n  tags: %s\n  content: %s\n\n", terminalText(result.Citation.ChunkID), result.Score, terminalText(result.Citation.Source), terminalText(result.Citation.Path), terminalText(result.Citation.DocumentID), terminalText(result.Citation.ContentHash), terminalText(strings.Join(result.Tags, ",")), terminalText(strings.TrimSpace(result.Content)))
+				semanticStr := ""
+				if result.SemanticScore > 0 {
+					semanticStr = fmt.Sprintf(" semantic=%.3f", result.SemanticScore)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "[%s] score=%d%s\n  citation: source=%s path=%s document=%s hash=%s\n  tags: %s\n  content: %s\n\n",
+					terminalText(result.Citation.ChunkID),
+					result.Score,
+					semanticStr,
+					terminalText(result.Citation.Source),
+					terminalText(result.Citation.Path),
+					terminalText(result.Citation.DocumentID),
+					terminalText(result.Citation.ContentHash),
+					terminalText(strings.Join(result.Tags, ",")),
+					terminalText(strings.TrimSpace(result.Content)),
+				)
 			}
 			return nil
 		},
@@ -112,6 +138,7 @@ func searchCommand(storePath *string) *cobra.Command {
 	cmd.Flags().IntVarP(&top, "top", "t", 10, "Maximum results (1-100)")
 	cmd.Flags().StringVarP(&source, "source", "s", "", "Source filter")
 	cmd.Flags().StringArrayVarP(&tags, "tag", "g", nil, "Required tag (repeatable)")
+	cmd.Flags().StringVarP(&mode, "mode", "m", "tokens", "Search mode: tokens, semantic, hybrid")
 	cmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "Output JSON")
 	return cmd
 }

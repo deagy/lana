@@ -46,7 +46,7 @@ func TestRootCommandHasSubcommands(t *testing.T) {
 			t.Errorf("expected subcommand %q not found", expected)
 		}
 	}
-	for _, unsupported := range []string{"dispatch", "shell", "git", "goal", "mcp", "plan", "plugin", "skill"} {
+	for _, unsupported := range []string{"dispatch", "shell", "git", "goal", "mcp", "plan", "skill"} {
 		if cmdMap[unsupported] {
 			t.Errorf("unsupported compatibility command %q is publicly reachable", unsupported)
 		}
@@ -84,7 +84,7 @@ func TestRootHelpDoesNotAdvertiseUnsupportedCompatibilityCommands(t *testing.T) 
 	if err := cmd.Help(); err != nil {
 		t.Fatalf("root help: %v", err)
 	}
-	for _, unsupported := range []string{"dispatch", "shell", "git", "goal", "mcp", "plan", "plugin", "skill"} {
+	for _, unsupported := range []string{"dispatch", "shell", "git", "goal", "mcp", "plan", "skill"} {
 		if strings.Contains(output.String(), unsupported) {
 			t.Errorf("root help advertises unsupported compatibility command %q:\n%s", unsupported, output.String())
 		}

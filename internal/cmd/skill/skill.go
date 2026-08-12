@@ -4,6 +4,7 @@ package skill
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const skillsDir = ".lana/skills"
+var skillsDir = ".lana/skills"
 
 // SkillManifest represents a skill's manifest file.
 type SkillManifest struct {
@@ -47,36 +48,36 @@ func skillListCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			skills, err := loadSkills()
 			if err != nil {
-				fmt.Println("No skills installed.")
+				fmt.Fprintln(cmd.OutOrStdout(), "No skills installed.")
 				return nil
 			}
 
 			if len(skills) == 0 {
-				fmt.Println("No skills installed.")
-				fmt.Println("To install: lana skill install <local-path>")
+				fmt.Fprintln(cmd.OutOrStdout(), "No skills installed.")
+				fmt.Fprintln(cmd.OutOrStdout(), "To install: lana skill install <local-path>")
 				return nil
 			}
 
 			if jsonOutput {
 				data, _ := json.MarshalIndent(skills, "", "  ")
-				fmt.Println(string(data))
+				fmt.Fprintln(cmd.OutOrStdout(), string(data))
 				return nil
 			}
 
-			fmt.Printf("Installed skills (%d):\n\n", len(skills))
+			fmt.Fprintf(cmd.OutOrStdout(), "Installed skills (%d):\n\n", len(skills))
 			for _, s := range skills {
 				status := "on"
 				if !s.Enabled {
 					status = "off"
 				}
-				fmt.Printf("  [%s] %s v%s\n", status, s.Name, s.Version)
+				fmt.Fprintf(cmd.OutOrStdout(), "  [%s] %s v%s\n", status, s.Name, s.Version)
 				if s.Description != "" {
-					fmt.Printf("      %s\n", s.Description)
+					fmt.Fprintf(cmd.OutOrStdout(), "      %s\n", s.Description)
 				}
 				if len(s.Triggers) > 0 {
-					fmt.Printf("      Triggers: %s\n", strings.Join(s.Triggers, ", "))
+					fmt.Fprintf(cmd.OutOrStdout(), "      Triggers: %s\n", strings.Join(s.Triggers, ", "))
 				}
-				fmt.Printf("      Path: %s\n\n", s.Path)
+				fmt.Fprintf(cmd.OutOrStdout(), "      Path: %s\n\n", s.Path)
 			}
 			return nil
 		},
@@ -149,8 +150,8 @@ func skillInstallCommand() *cobra.Command {
 				return fmt.Errorf("save skills: %w", err)
 			}
 
-			fmt.Printf("Skill installed: %s v%s\n", manifest.Name, manifest.Version)
-			fmt.Printf("  Path: %s\n", destDir)
+			fmt.Fprintf(cmd.OutOrStdout(), "Skill installed: %s v%s\n", manifest.Name, manifest.Version)
+			fmt.Fprintf(cmd.OutOrStdout(), "  Path: %s\n", destDir)
 			return nil
 		},
 	}
@@ -169,7 +170,7 @@ func skillEnableCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name = args[0]
-			return toggleSkill(name, true)
+			return toggleSkill(cmd.OutOrStdout(), name, true)
 		},
 	}
 	return cmd
@@ -184,7 +185,7 @@ func skillDisableCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name = args[0]
-			return toggleSkill(name, false)
+			return toggleSkill(cmd.OutOrStdout(), name, false)
 		},
 	}
 	return cmd
@@ -227,7 +228,7 @@ func skillRemoveCommand() *cobra.Command {
 				return fmt.Errorf("save skills: %w", err)
 			}
 
-			fmt.Printf("Skill removed: %s\n", name)
+			fmt.Fprintf(cmd.OutOrStdout(), "Skill removed: %s\n", name)
 			return nil
 		},
 	}
@@ -256,19 +257,19 @@ func skillInfoCommand() *cobra.Command {
 				if s.Name == name {
 					if jsonOutput {
 						data, _ := json.MarshalIndent(s, "", "  ")
-						fmt.Println(string(data))
+						fmt.Fprintln(cmd.OutOrStdout(), string(data))
 						return nil
 					}
 
-					fmt.Printf("Name:        %s\n", s.Name)
-					fmt.Printf("Version:     %s\n", s.Version)
-					fmt.Printf("Enabled:     %v\n", s.Enabled)
-					fmt.Printf("Path:        %s\n", s.Path)
+					fmt.Fprintf(cmd.OutOrStdout(), "Name:        %s\n", s.Name)
+					fmt.Fprintf(cmd.OutOrStdout(), "Version:     %s\n", s.Version)
+					fmt.Fprintf(cmd.OutOrStdout(), "Enabled:     %v\n", s.Enabled)
+					fmt.Fprintf(cmd.OutOrStdout(), "Path:        %s\n", s.Path)
 					if s.Description != "" {
-						fmt.Printf("Description: %s\n", s.Description)
+						fmt.Fprintf(cmd.OutOrStdout(), "Description: %s\n", s.Description)
 					}
 					if len(s.Triggers) > 0 {
-						fmt.Printf("Triggers:    %s\n", strings.Join(s.Triggers, ", "))
+						fmt.Fprintf(cmd.OutOrStdout(), "Triggers:    %s\n", strings.Join(s.Triggers, ", "))
 					}
 					return nil
 				}
@@ -309,7 +310,7 @@ func saveSkills(skills []SkillManifest) error {
 	return os.WriteFile(filepath.Join(skillsDirAbs, "skills.json"), data, 0644)
 }
 
-func toggleSkill(name string, enabled bool) error {
+func toggleSkill(w io.Writer, name string, enabled bool) error {
 	skills, err := loadSkills()
 	if err != nil {
 		return err
@@ -336,7 +337,7 @@ func toggleSkill(name string, enabled bool) error {
 	if enabled {
 		action = "enabled"
 	}
-	fmt.Printf("Skill %s %s\n", name, action)
+	fmt.Fprintf(w, "Skill %s %s\n", name, action)
 	return nil
 }
 

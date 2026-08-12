@@ -55,9 +55,11 @@ type MCPConfig struct {
 
 // MCPServerConfig holds configuration for a single MCP server.
 type MCPServerConfig struct {
-	Name  string `mapstructure:"name" yaml:"name" json:"name"`
-	URI   string `mapstructure:"uri" yaml:"uri" json:"uri"`
-	Stdio bool   `mapstructure:"stdio" yaml:"stdio" json:"stdio"`
+	Name    string   `mapstructure:"name" yaml:"name" json:"name"`
+	URI     string   `mapstructure:"uri" yaml:"uri" json:"uri"`
+	Stdio   bool     `mapstructure:"stdio" yaml:"stdio" json:"stdio"`
+	Command string   `mapstructure:"command" yaml:"command" json:"command"`
+	Args    []string `mapstructure:"args" yaml:"args" json:"args"`
 }
 
 // ExecConfig holds execution settings.

@@ -14,8 +14,10 @@ import (
 	"github.com/deagy/lana/internal/app"
 	"github.com/deagy/lana/internal/cli"
 	agentscmd "github.com/deagy/lana/internal/cmd/agents"
+	configcmd "github.com/deagy/lana/internal/cmd/config"
 	"github.com/deagy/lana/internal/cmd/file"
 	"github.com/deagy/lana/internal/cmd/knowledge"
+	"github.com/deagy/lana/internal/cmd/plugin"
 	"github.com/deagy/lana/internal/cmd/sdcl"
 	"github.com/deagy/lana/internal/cmd/system"
 	"github.com/deagy/lana/internal/provider"
@@ -159,8 +161,10 @@ Examples:
 	cmd.AddCommand(agentscmd.NewCommand(agentscmd.Options{Executor: options.AgentExecutor, Store: options.AgentStore}))
 	cmd.AddCommand(file.NewCommand())
 	cmd.AddCommand(knowledge.NewCommand())
+	cmd.AddCommand(plugin.NewCommand())
 	cmd.AddCommand(sdcl.NewCommand())
 	cmd.AddCommand(system.NewCommand())
+	cmd.AddCommand(configcmd.NewCommand())
 
 	// Completion commands
 	cmd.AddCommand(completionCmd())

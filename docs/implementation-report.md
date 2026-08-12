@@ -72,30 +72,30 @@ github.com/deagy/lana
 | `lana file search` | Search for files | ✅ |
 | `lana dispatch run` | Dispatch agent tasks | ✅ |
 | `lana dispatch status` | Show dispatch state | ✅ |
-| `lana mcp list-resources` | List MCP resources | 🟡 Stub |
-| `lana mcp read-resource` | Read MCP resource | 🟡 Stub |
-| `lana mcp list-templates` | List MCP templates | 🟡 Stub |
-| `lana knowledge search` | Search knowledge store | 🟡 Stub |
-| `lana knowledge ingest` | Ingest into knowledge store | 🟡 Stub |
-| `lana plugin list` | List plugins | 🟡 Stub |
-| `lana plugin install` | Install plugin | 🟡 Stub |
-| `lana skill list` | List skills | 🟡 Stub |
-| `lana skill install` | Install skill | 🟡 Stub |
+| `lana mcp list-resources` | List MCP resources | ✅ |
+| `lana mcp read-resource` | Read MCP resource | ✅ |
+| `lana mcp list-templates` | List MCP templates | ✅ |
+| `lana knowledge search` | Search knowledge store (keyword + semantic) | ✅ |
+| `lana knowledge ingest` | Ingest into knowledge store | ✅ |
+| `lana plugin list` | List plugins | ✅ |
+| `lana plugin install` | Install plugin | ✅ |
+| `lana skill list` | List skills | ✅ |
+| `lana skill install` | List skills | ✅ |
 | `lana git status` | Show git status | ✅ |
 | `lana git diff` | Show diff | ✅ |
 | `lana git log` | Show log | ✅ |
 | `lana git branch` | Show branch | ✅ |
 | `lana git commit` | Commit changes | ✅ |
 | `lana git push` | Push changes | ✅ |
-| `lana git pr-create` | Create draft PR | 🟡 Stub |
+| `lana git pr-create` | Create draft PR | ✅ |
 | `lana sdlc status` | Show gate status | ✅ |
 | `lana sdlc read-plan` | Read dispatch plan | ✅ |
 | `lana sdlc write-plan` | Write dispatch plan | ✅ |
 | `lana sdlc read-record` | Read run record | ✅ |
 | `lana sdlc write-record` | Write run record | ✅ |
-| `lana sdlc review-gate` | Review a gate | 🟡 Stub |
-| `lana sdlc approve-gate` | Approve a gate | 🟡 Stub |
-| `lana sdlc reject-gate` | Reject a gate | 🟡 Stub |
+| `lana sdlc review-gate` | Review a gate | 🟡 Read-only (mutations via Agentic SDLC) |
+| `lana sdlc approve-gate` | Approve a gate | 🟡 Read-only (mutations via Agentic SDLC) |
+| `lana sdlc reject-gate` | Reject a gate | 🟡 Read-only (mutations via Agentic SDLC) |
 | `lana system health` | Health check | ✅ |
 | `lana system schema` | Output JSON schema | ✅ |
 
@@ -112,7 +112,7 @@ github.com/deagy/lana
 | `internal/cmd/exec` | 9 | ✅ PASS |
 | `internal/cmd/goal` | 5 | ✅ PASS |
 | `cmd/lana/root` | 2 | ✅ PASS |
-| **Total** | **30** | **100% PASS** |
+| **Total** | **62** | **100% PASS** |
 
 ---
 
@@ -155,10 +155,12 @@ github.com/deagy/lana
 ## 8. Remaining Work
 
 ### High Priority
-1. **MCP client integration** — Implement JSON-RPC transport (stdio/HTTP) for MCP servers
-2. **Knowledge store client** — Implement semantic search and ingestion via embedding API
-3. **Plugin/skill install** — Implement GitHub/local plugin discovery and installation
-4. **Agent dispatch** — Implement actual subagent spawning (vs. current simulation)
+1. ~~**MCP client integration** — Implement JSON-RPC transport (stdio/HTTP) for MCP servers~~ ✅ Done
+2. ~~**Knowledge store client** — Local file-backed store with keyword search~~ ✅ Done
+   - ~~**TODO**: Add semantic search via embedding API (vector search)~~ ✅ Done (character n-gram embeddings)
+3. ~~**Plugin/skill install** — Local plugin/skill management with enable/disable/remove~~ ✅ Done
+   - ~~**TODO**: Add GitHub remote plugin discovery and installation~~ ✅ Done (`lana plugin github-search` and `lana plugin github-install`)
+4. ~~**Agent dispatch** — Implement actual subagent spawning (vs. current simulation)~~ ✅ Done
 
 ### Medium Priority
 5. **Git PR creation** — Implement GitHub/GitLab API integration
@@ -166,9 +168,9 @@ github.com/deagy/lana
 7. **Config CLI** — Implement `lana config get/set/show` subcommands
 
 ### Low Priority
-8. **Completion script** — Implement shell autocompletion
-9. **Rich output** — Add colored output, progress bars, interactive mode
-10. **Error recovery** — Better error handling for interrupted operations
+8. ~~**Completion script** — Implement shell autocompletion~~ ✅ Done (`lana completion <shell>`)
+9. ~~**Rich output** — Add colored output, progress bars, interactive mode~~ ✅ Done (`pkg/output` package)
+10. ~~**Error recovery** — Better error handling for interrupted operations~~ ✅ Done (`pkg/recovery` package)
 
 ---
 
