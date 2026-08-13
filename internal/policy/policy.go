@@ -30,7 +30,7 @@ func ResolveWorkspacePath(workspace, relPath string) (string, error) {
 
 	// Check if the resolved path is within the workspace
 	rel, err := filepath.Rel(absWorkspace, resolvedPath)
-	if err != nil || (len(rel) > 0 && rel[0:2] == "..") {
+	if err != nil || (len(rel) >= 2 && rel[0:2] == "..") {
 		return "", fmt.Errorf("path escapes workspace: %s", relPath)
 	}
 
