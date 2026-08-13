@@ -17,10 +17,10 @@ func TestManifestValidation(t *testing.T) {
 		{
 			name: "valid manifest",
 			manifest: &Manifest{
-				Name:       "myplugin",
-				Version:    "1.0.0",
+				Name:        "myplugin",
+				Version:     "1.0.0",
 				Description: "Test plugin",
-				Entrypoint: "plugin.sh",
+				Entrypoint:  "plugin.sh",
 			},
 			setup: func(dir string) error {
 				// Create executable entrypoint
@@ -81,7 +81,7 @@ func TestManifestValidation(t *testing.T) {
 				Name:       "plugin",
 				Entrypoint: "",
 			},
-			setup: func(dir string) error { return nil },
+			setup:     func(dir string) error { return nil },
 			wantError: true,
 			errMsg:    "entrypoint is required",
 		},
@@ -91,7 +91,7 @@ func TestManifestValidation(t *testing.T) {
 				Name:       "plugin",
 				Entrypoint: "missing.sh",
 			},
-			setup: func(dir string) error { return nil },
+			setup:     func(dir string) error { return nil },
 			wantError: true,
 			errMsg:    "entrypoint not found",
 		},

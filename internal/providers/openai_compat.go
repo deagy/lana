@@ -113,13 +113,13 @@ func (c *OpenAICompatibleClient) SupportedModels(ctx context.Context) ([]provide
 }
 
 type openaiRequestBody struct {
-	Model       string                  `json:"model"`
-	Messages    []openaiMessage         `json:"messages"`
-	Stream      bool                    `json:"stream"`
-	MaxTokens   int                     `json:"max_tokens,omitempty"`
-	Temperature *float32                `json:"temperature,omitempty"`
-	Tools       []openaiTool            `json:"tools,omitempty"`
-	ToolChoice  *string                 `json:"tool_choice,omitempty"`
+	Model       string          `json:"model"`
+	Messages    []openaiMessage `json:"messages"`
+	Stream      bool            `json:"stream"`
+	MaxTokens   int             `json:"max_tokens,omitempty"`
+	Temperature *float32        `json:"temperature,omitempty"`
+	Tools       []openaiTool    `json:"tools,omitempty"`
+	ToolChoice  *string         `json:"tool_choice,omitempty"`
 }
 
 type openaiMessage struct {
@@ -131,9 +131,9 @@ type openaiMessage struct {
 }
 
 type openaiToolUse struct {
-	ID       string          `json:"id"`
-	Type     string          `json:"type"` // "function"
-	Function openaiFunction  `json:"function"`
+	ID       string         `json:"id"`
+	Type     string         `json:"type"` // "function"
+	Function openaiFunction `json:"function"`
 }
 
 type openaiFunction struct {
@@ -255,8 +255,8 @@ func (r *openaiSSEReader) Close() error {
 type openaiChunkResponse struct {
 	Choices []struct {
 		Delta struct {
-			Role      string             `json:"role"`
-			Content   string             `json:"content"`
+			Role      string               `json:"role"`
+			Content   string               `json:"content"`
 			ToolCalls []openaiToolUseChunk `json:"tool_calls"`
 		} `json:"delta"`
 		FinishReason *string `json:"finish_reason"`
@@ -264,9 +264,9 @@ type openaiChunkResponse struct {
 }
 
 type openaiToolUseChunk struct {
-	Index    int             `json:"index"`
-	ID       string          `json:"id"`
-	Type     string          `json:"type"`
+	Index    int    `json:"index"`
+	ID       string `json:"id"`
+	Type     string `json:"type"`
 	Function struct {
 		Name      string `json:"name"`
 		Arguments string `json:"arguments"`

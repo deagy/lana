@@ -32,15 +32,15 @@ type Store interface {
 
 // Session represents an active or archived conversation.
 type Session struct {
-	ID           string    `json:"id"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Model        string    `json:"model"`
-	Provider     string    `json:"provider"`
-	Title        string    `json:"title,omitempty"`
-	Workspace    string    `json:"workspace,omitempty"`
-	Transcript   []Message `json:"transcript"`
-	Metadata     map[string]string `json:"metadata,omitempty"`
+	ID         string            `json:"id"`
+	CreatedAt  time.Time         `json:"created_at"`
+	UpdatedAt  time.Time         `json:"updated_at"`
+	Model      string            `json:"model"`
+	Provider   string            `json:"provider"`
+	Title      string            `json:"title,omitempty"`
+	Workspace  string            `json:"workspace,omitempty"`
+	Transcript []Message         `json:"transcript"`
+	Metadata   map[string]string `json:"metadata,omitempty"`
 }
 
 // SessionMetadata is metadata for a session without the full transcript.

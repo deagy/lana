@@ -151,9 +151,9 @@ func TestNewFormatter(t *testing.T) {
 
 func TestTruncate(t *testing.T) {
 	tests := []struct {
-		input   string
-		maxLen  int
-		want    string
+		input  string
+		maxLen int
+		want   string
 	}{
 		{"hello", 10, "hello"},
 		{"hello world", 5, "hello..."},

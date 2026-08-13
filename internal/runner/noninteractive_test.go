@@ -45,8 +45,8 @@ func (m *mockClient) Chat(ctx context.Context, req *provider.Request) (provider.
 	return &mockReader{events: m.events}, nil
 }
 
-func (m *mockClient) Name() string                                             { return "mock" }
-func (m *mockClient) Model() string                                            { return "test" }
+func (m *mockClient) Name() string  { return "mock" }
+func (m *mockClient) Model() string { return "test" }
 func (m *mockClient) SupportedModels(ctx context.Context) ([]provider.ModelInfo, error) {
 	return nil, nil
 }

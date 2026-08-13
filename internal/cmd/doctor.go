@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/providers"
+	"github.com/spf13/cobra"
 )
 
 var doctorCmd = &cobra.Command{

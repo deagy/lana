@@ -125,10 +125,10 @@ func (c *OllamaClient) SupportedModels(ctx context.Context) ([]provider.ModelInf
 }
 
 type ollamaRequestBody struct {
-	Model    string           `json:"model"`
-	Messages []ollamaMessage  `json:"messages"`
-	Stream   bool             `json:"stream"`
-	Tools    []ollamaTool     `json:"tools,omitempty"`
+	Model    string          `json:"model"`
+	Messages []ollamaMessage `json:"messages"`
+	Stream   bool            `json:"stream"`
+	Tools    []ollamaTool    `json:"tools,omitempty"`
 }
 
 type ollamaMessage struct {
@@ -179,17 +179,17 @@ func (c *OllamaClient) buildRequestBody(req *provider.Request) interface{} {
 
 // ollamaJSONLReader reads JSONL responses from Ollama.
 type ollamaJSONLReader struct {
-	body            io.Closer
-	scanner         *bufio.Scanner
-	done            bool
-	roleEmitted     bool
-	pendingContent  string
+	body             io.Closer
+	scanner          *bufio.Scanner
+	done             bool
+	roleEmitted      bool
+	pendingContent   string
 	pendingToolCalls []ollamaToolCall
 }
 
 type ollamaToolCall struct {
-	ID   string          `json:"id"`
-	Name string          `json:"name"`
+	ID    string          `json:"id"`
+	Name  string          `json:"name"`
 	Input json.RawMessage `json:"input"`
 }
 
@@ -309,8 +309,8 @@ type ollamaResponseMessage struct {
 	Model     string `json:"model"`
 	CreatedAt string `json:"created_at"`
 	Message   struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
+		Role      string `json:"role"`
+		Content   string `json:"content"`
 		ToolCalls []struct {
 			Function struct {
 				Name      string          `json:"name"`
@@ -318,7 +318,7 @@ type ollamaResponseMessage struct {
 			} `json:"function"`
 		} `json:"tool_calls,omitempty"`
 	} `json:"message"`
-	Done            bool `json:"done"`
+	Done            bool  `json:"done"`
 	TotalDuration   int64 `json:"total_duration,omitempty"`
 	LoadDuration    int64 `json:"load_duration,omitempty"`
 	PromptEvalCount int   `json:"prompt_eval_count,omitempty"`

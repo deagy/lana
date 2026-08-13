@@ -35,11 +35,11 @@ func (f ExecutorFunc) Execute(input interface{}, data json.RawMessage) (string, 
 
 // Definition is a complete tool definition.
 type Definition struct {
-	NameVal        string
-	DescriptionVal string
-	SchemaVal      json.RawMessage
-	ExecutorVal    SimpleExecutor
-	RiskLevel      RiskLevel
+	NameVal          string
+	DescriptionVal   string
+	SchemaVal        json.RawMessage
+	ExecutorVal      SimpleExecutor
+	RiskLevel        RiskLevel
 	RequiresApproval bool
 }
 

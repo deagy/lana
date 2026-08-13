@@ -18,10 +18,10 @@ type Config struct {
 
 // ProviderConfig configures the AI provider.
 type ProviderConfig struct {
-	Name   string // "openai", "ollama"
-	Model  string
-	APIKey string
-	Endpoint string
+	Name          string // "openai", "ollama"
+	Model         string
+	APIKey        string
+	Endpoint      string
 	CustomHeaders map[string]string
 }
 

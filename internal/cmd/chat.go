@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/approval"
 	"github.com/deagy/lana/internal/execution"
 	"github.com/deagy/lana/internal/mcp"
@@ -19,6 +18,7 @@ import (
 	"github.com/deagy/lana/internal/tools"
 	"github.com/deagy/lana/internal/tools/impl"
 	"github.com/deagy/lana/internal/tui"
+	"github.com/spf13/cobra"
 )
 
 var (

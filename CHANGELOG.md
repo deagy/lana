@@ -45,9 +45,27 @@ All notable changes to Lana will be documented in this file.
 - MCP server configuration examples
 - Tool discovery and execution workflows
 
+### Plugin System (Phase 8)
+- **Plugin Management System** — Install and manage CLI plugins
+- Manifest-based plugin definition (name, version, description, entrypoint)
+- Plugin installation with collision detection against reserved command names
+- Plugin discovery and registry with partial-failure tolerance
+- Dynamic subcommand registration for installed plugins
+- Plugin execution with stdio passthrough
+- MCP server integration (plugins can declare MCP servers)
+- Workspace-safe execution (runs in caller's directory, not plugin directory)
+
+### New Commands (Plugins)
+- `plugin list` — List installed plugins
+- `plugin install <path>` — Install plugin from directory
+- `plugin remove <name>` — Uninstall a plugin
+- `plugin info <name>` — Show plugin details
+- Dynamic plugin subcommands (e.g., `lana <plugin-name> [args]`)
+
 ### Project Status
-- 95% of v1.0 feature set complete
-- Production-ready MCP client implementation
+- 100% of v1.0 feature set complete
+- Production-ready MCP + plugin system
+- All critical features shipped
 - Full integration with chat and run modes
 
 ## [0.1.0] - 2025-08-12

@@ -11,10 +11,10 @@ import (
 
 // Turn represents a single exchange with the provider.
 type Turn struct {
-	Session   *session.Session
-	Pipeline  *EventPipeline
-	Executor  *execution.Executor
-	Provider  provider.Client
+	Session  *session.Session
+	Pipeline *EventPipeline
+	Executor *execution.Executor
+	Provider provider.Client
 }
 
 // NewTurn creates a new turn.

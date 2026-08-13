@@ -3,7 +3,7 @@
 A terminal-first AI coding agent written in Go. Execute tasks interactively or automate workflows with structured output.
 
 **Version:** 0.2.0  
-**Status:** Phase 7 Complete (95% of v1.0 feature set)
+**Status:** Phase 8 Complete (plugin system) — 100% of v1.0 feature set
 
 ## Quick Start
 
@@ -113,6 +113,17 @@ lana providers list     # Show available providers
 lana models list        # List available models
 lana version            # Show version
 lana doctor             # Run diagnostics
+```
+
+### Plugins — Extend with Custom Commands
+```bash
+lana plugin list                 # List installed plugins
+lana plugin install <path>       # Install plugin from directory
+lana plugin remove <name>        # Uninstall a plugin
+lana plugin info <name>          # Show plugin details
+
+# Run installed plugin (becomes a subcommand)
+lana <plugin-name> [args...]
 ```
 
 ## Configuration
@@ -297,20 +308,20 @@ Safety & Policy (Workspace, Approval)
 
 - TUI integration in progress (Part 3)
 - Single-agent execution (multi-agent in roadmap)
-- Limited plugin system (planned for v0.2)
 
 ## Roadmap
 
-### v0.2.0 (Q3 2025)
-- MCP protocol integration
-- Plugin system
+### v0.2.0 (Complete — Q3 2025)
+- ✅ MCP protocol integration (Phase 7)
+- ✅ Plugin system (Phase 8)
 - Advanced output modes (CSV, Markdown)
 
-### v0.3.0 (Q4 2025)
+### v0.3.0 (Planned — Q4 2025)
 - Web UI dashboard
 - Multi-agent orchestration
+- GitHub-based plugin discovery
 
-### v1.0.0 (2026)
+### v1.0.0 (Planned — 2026)
 - Stable API
 - Production deployment guide
 

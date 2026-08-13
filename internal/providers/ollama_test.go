@@ -39,10 +39,10 @@ func TestOllamaClient_Chat(t *testing.T) {
 				"done": false,
 			},
 			{
-				"model":     "llama2",
-				"done":      true,
+				"model":          "llama2",
+				"done":           true,
 				"total_duration": 1000000000,
-				"eval_count": 10,
+				"eval_count":     10,
 			},
 		}
 

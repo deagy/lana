@@ -12,12 +12,12 @@ import (
 
 // Client wraps a transport and handles JSON-RPC communication.
 type Client struct {
-	transport     io.ReadWriteCloser
-	requestID     atomic.Int64
-	responses     map[int64]chan *Response
-	responsesMu   sync.RWMutex
-	readLoopDone  chan struct{}
-	closeOnce     sync.Once
+	transport    io.ReadWriteCloser
+	requestID    atomic.Int64
+	responses    map[int64]chan *Response
+	responsesMu  sync.RWMutex
+	readLoopDone chan struct{}
+	closeOnce    sync.Once
 }
 
 // NewClient creates a new MCP client over the given transport.

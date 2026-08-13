@@ -7,14 +7,14 @@ import (
 
 // Result represents a tool execution or turn result.
 type Result struct {
-	Status      string                 `json:"status"`
-	Message     string                 `json:"message,omitempty"`
-	ToolName    string                 `json:"tool_name,omitempty"`
-	ToolInput   map[string]interface{} `json:"tool_input,omitempty"`
-	ToolOutput  string                 `json:"tool_output,omitempty"`
-	Error       string                 `json:"error,omitempty"`
-	Approved    bool                   `json:"approved,omitempty"`
-	Timestamp   int64                  `json:"timestamp"`
+	Status     string                 `json:"status"`
+	Message    string                 `json:"message,omitempty"`
+	ToolName   string                 `json:"tool_name,omitempty"`
+	ToolInput  map[string]interface{} `json:"tool_input,omitempty"`
+	ToolOutput string                 `json:"tool_output,omitempty"`
+	Error      string                 `json:"error,omitempty"`
+	Approved   bool                   `json:"approved,omitempty"`
+	Timestamp  int64                  `json:"timestamp"`
 }
 
 // Formatter handles output formatting for different modes.

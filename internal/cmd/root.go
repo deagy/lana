@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/config"
 	"github.com/deagy/lana/internal/plugin"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -81,8 +81,8 @@ func registerInstalledPlugins() {
 		pluginDirCopy := filepath.Join(pluginsDir, p.Name)
 
 		cmd := &cobra.Command{
-			Use:               pCopy.Name,
-			Short:             pCopy.Description,
+			Use:                pCopy.Name,
+			Short:              pCopy.Description,
 			DisableFlagParsing: true,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				ctx := context.Background()
@@ -93,4 +93,3 @@ func registerInstalledPlugins() {
 		rootCmd.AddCommand(cmd)
 	}
 }
-

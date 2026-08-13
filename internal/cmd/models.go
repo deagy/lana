@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/providers"
+	"github.com/spf13/cobra"
 )
 
 var modelsCmd = &cobra.Command{

@@ -64,7 +64,7 @@ func IsHighRisk(command string) bool {
 // ContainsSensitivePattern checks if content contains likely secrets.
 func ContainsSensitivePattern(content string) bool {
 	patterns := []string{
-		"sk-",          // OpenAI keys
+		"sk-", // OpenAI keys
 		"api_key",
 		"password",
 		"secret",

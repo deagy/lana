@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/approval"
 	"github.com/deagy/lana/internal/mcp"
 	"github.com/deagy/lana/internal/output"
@@ -16,16 +15,17 @@ import (
 	"github.com/deagy/lana/internal/session"
 	"github.com/deagy/lana/internal/storage"
 	"github.com/deagy/lana/internal/tools/impl"
+	"github.com/spf13/cobra"
 )
 
 var (
-	runProvider          string
-	runModel             string
-	runOutput            string
-	runApprovalMode      string
-	runTimeout           int
-	runSaveSession       bool
-	runMaxTurns          int
+	runProvider     string
+	runModel        string
+	runOutput       string
+	runApprovalMode string
+	runTimeout      int
+	runSaveSession  bool
+	runMaxTurns     int
 )
 
 var runCmd = &cobra.Command{

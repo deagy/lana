@@ -18,13 +18,13 @@ import (
 
 // NonInteractiveRunner executes an agent prompt and streams structured output.
 type NonInteractiveRunner struct {
-	sessionID   string
-	store       *storage.FileStore
-	client      provider.Client
-	registry    *tools.Registry
-	policy      approval.Policy
-	formatter   output.Formatter
-	maxTurns    int
+	sessionID string
+	store     *storage.FileStore
+	client    provider.Client
+	registry  *tools.Registry
+	policy    approval.Policy
+	formatter output.Formatter
+	maxTurns  int
 }
 
 // NewNonInteractiveRunner creates a new runner.
@@ -38,13 +38,13 @@ func NewNonInteractiveRunner(
 	maxTurns int,
 ) *NonInteractiveRunner {
 	return &NonInteractiveRunner{
-		sessionID:   sessionID,
-		store:       store,
-		client:      client,
-		registry:    registry,
-		policy:      policy,
-		formatter:   formatter,
-		maxTurns:    maxTurns,
+		sessionID: sessionID,
+		store:     store,
+		client:    client,
+		registry:  registry,
+		policy:    policy,
+		formatter: formatter,
+		maxTurns:  maxTurns,
 	}
 }
 

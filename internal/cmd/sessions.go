@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/session"
+	"github.com/spf13/cobra"
 )
 
 var sessionsCmd = &cobra.Command{

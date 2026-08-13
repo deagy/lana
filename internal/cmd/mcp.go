@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/config"
 	"github.com/deagy/lana/internal/mcp"
+	"github.com/spf13/cobra"
 )
 
 var mcpCmd = &cobra.Command{

@@ -164,6 +164,210 @@ lana doctor             # Run diagnostic checks
 lana version            # Show version and build info
 ```
 
+### plugin — Manage Plugins
+```bash
+lana plugin list                    # List installed plugins
+lana plugin install <path>          # Install plugin from directory
+lana plugin remove <name>           # Uninstall a plugin
+lana plugin info <name>             # Show plugin details
+
+# Run an installed plugin
+lana <plugin-name> [args...]
+```
+
+**Examples:**
+```bash
+# List all plugins
+lana plugin list
+
+# Install a plugin from a directory
+lana plugin install ~/my-lana-plugin
+
+# Get details about a plugin
+lana plugin info my-lana-plugin
+
+# Run the installed plugin
+lana my-lana-plugin --help
+lana my-lana-plugin analyze file.go
+```
+
+## Writing a Plugin
+
+Plugins are executable programs that extend Lana with new commands. Any language that can produce an executable works: Bash, Go, Python, Node.js, etc.
+
+### Plugin Structure
+
+A plugin is a directory with this layout:
+
+```
+my-plugin/
+├── manifest.yaml      # Plugin metadata (required)
+└── run.sh            # Entrypoint script (executable)
+```
+
+### Manifest Format
+
+The `manifest.yaml` defines your plugin:
+
+```yaml
+name: my-plugin              # Lowercase with hyphens: ^[a-z][a-z0-9-]*$
+version: 1.0.0              # Semantic version
+description: What it does   # One-line description
+entrypoint: run.sh          # Path to executable (relative to plugin root)
+
+# Optional: MCP servers the plugin provides
+# mcpServers:
+#   - name: my-server
+#     transport: stdio
+#     command: ./mcp-server
+#     args:
+#       - --config
+#       - config.json
+```
+
+### Entrypoint Script
+
+The entrypoint is executed as `<entrypoint> <args...>` in your current working directory:
+
+```bash
+#!/bin/bash
+# Receives all arguments from command line
+echo "Plugin received: $@"
+
+# Your plugin logic here
+if [[ $1 == "--help" ]]; then
+  echo "Usage: lana my-plugin [options]"
+  exit 0
+fi
+
+# Do work and exit with status code
+exit 0
+```
+
+### Installation
+
+Install your plugin (from a local directory):
+
+```bash
+lana plugin install ~/my-plugin
+```
+
+This:
+1. Validates the manifest and entrypoint
+2. Checks the name doesn't collide with built-in commands
+3. Copies the entire plugin directory to `~/.lana/plugins/<name>/`
+4. Makes the entrypoint executable
+
+### Usage
+
+Once installed, your plugin becomes a Lana subcommand:
+
+```bash
+# The command name is the plugin name
+lana my-plugin --help
+lana my-plugin analyze file.go
+```
+
+Plugins run in your **current working directory** (not the plugin install directory), so they naturally work with relative paths like any normal CLI tool.
+
+### MCP Server Integration (Optional)
+
+If your plugin provides an MCP server, declare it in `manifest.yaml`:
+
+```yaml
+name: my-plugin
+version: 1.0.0
+entrypoint: run.sh
+
+mcpServers:
+  - name: my-mcp-server
+    transport: stdio
+    command: ./mcp-server-binary
+    args:
+      - --config
+      - ./config.json
+```
+
+When installed, Lana automatically:
+1. Registers the MCP server in the global config
+2. Rewrites the command path to an absolute path inside your plugin directory
+3. Makes the MCP server's tools available to agents
+
+Verify with:
+```bash
+lana mcp list     # Should show your MCP server
+lana mcp tools my-mcp-server  # List its tools
+```
+
+**Note:** If you later uninstall the plugin, remove its MCP servers manually:
+```bash
+lana mcp remove my-mcp-server
+```
+
+### Best Practices
+
+1. **Shebang** — Always use a shebang (`#!/bin/bash`, `#!/usr/bin/env python3`, etc.)
+2. **Permissions** — Lana automatically makes the entrypoint executable, but make sure it's marked as executable in your source
+3. **Exit Codes** — Use meaningful exit codes (0 = success, non-zero = failure)
+4. **Help Text** — Support `--help` so users can discover options
+5. **Working Directory** — Don't assume the plugin's install directory; always work with absolute paths or the caller's directory
+6. **Errors to Stderr** — Write errors and warnings to stderr, output to stdout
+7. **No Sandboxing** — Plugins run with your user's permissions (same as running any CLI tool)
+
+### Example Plugin (Bash)
+
+```bash
+#!/bin/bash
+# ~/my-awesome-plugin/run.sh
+
+set -e
+
+show_help() {
+  echo "Usage: lana my-awesome-plugin [command] [args...]"
+  echo ""
+  echo "Commands:"
+  echo "  analyze <file>   Analyze a file"
+  echo "  report           Generate a report"
+}
+
+if [[ $# -eq 0 ]] || [[ $1 == "--help" ]] || [[ $1 == "-h" ]]; then
+  show_help
+  exit 0
+fi
+
+case "$1" in
+  analyze)
+    file="$2"
+    echo "Analyzing $file..."
+    # Your logic here
+    ;;
+  report)
+    echo "Generating report..."
+    # Your logic here
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    show_help >&2
+    exit 1
+    ;;
+esac
+```
+
+Manifest:
+```yaml
+name: my-awesome-plugin
+version: 1.0.0
+description: Analyze and report on your codebase
+entrypoint: run.sh
+```
+
+Install and use:
+```bash
+lana plugin install ~/my-awesome-plugin
+lana my-awesome-plugin analyze main.go
+lana my-awesome-plugin report
+```
+
 ## Approval System
 
 The approval system protects against dangerous operations.

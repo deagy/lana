@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/config"
+	"github.com/spf13/cobra"
 )
 
 var configCmd = &cobra.Command{

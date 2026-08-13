@@ -59,9 +59,9 @@ type mockTool struct {
 	name string
 }
 
-func (m *mockTool) Name() string                                      { return m.name }
-func (m *mockTool) Description() string                              { return "test tool" }
-func (m *mockTool) InputSchema() json.RawMessage                     { return json.RawMessage(`{}`) }
+func (m *mockTool) Name() string                 { return m.name }
+func (m *mockTool) Description() string          { return "test tool" }
+func (m *mockTool) InputSchema() json.RawMessage { return json.RawMessage(`{}`) }
 func (m *mockTool) Execute(ctx context.Context, input json.RawMessage) (string, error) {
 	return "test", nil
 }

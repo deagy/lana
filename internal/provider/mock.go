@@ -8,11 +8,11 @@ import (
 
 // MockProvider is a deterministic provider for testing.
 type MockProvider struct {
-	name    string
-	model   string
-	events  []Event
-	mu      sync.Mutex
-	closed  bool
+	name   string
+	model  string
+	events []Event
+	mu     sync.Mutex
+	closed bool
 }
 
 // NewMockProvider creates a new mock provider.
@@ -30,7 +30,7 @@ func (m *MockProvider) Chat(ctx context.Context, req *Request) (Reader, error) {
 
 	return &mockReader{
 		events: m.events,
-		index: 0,
+		index:  0,
 	}, nil
 }
 

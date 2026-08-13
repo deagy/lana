@@ -13,11 +13,11 @@ import (
 
 // Manifest represents a plugin's metadata and configuration.
 type Manifest struct {
-	Name      string                      `yaml:"name"`
-	Version   string                      `yaml:"version"`
-	Description string                    `yaml:"description"`
-	Entrypoint string                    `yaml:"entrypoint"`
-	MCPServers []config.MCPServerConfig `yaml:"mcp_servers,omitempty"`
+	Name        string                   `yaml:"name"`
+	Version     string                   `yaml:"version"`
+	Description string                   `yaml:"description"`
+	Entrypoint  string                   `yaml:"entrypoint"`
+	MCPServers  []config.MCPServerConfig `yaml:"mcp_servers,omitempty"`
 }
 
 // LoadManifest loads and parses a manifest.yaml from the given directory.

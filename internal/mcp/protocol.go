@@ -40,9 +40,9 @@ type Notification struct {
 
 // InitializeParams are parameters for the initialize method.
 type InitializeParams struct {
-	ProtocolVersion string `json:"protocolVersion"`
+	ProtocolVersion string       `json:"protocolVersion"`
 	Capabilities    Capabilities `json:"capabilities"`
-	ClientInfo      ClientInfo `json:"clientInfo"`
+	ClientInfo      ClientInfo   `json:"clientInfo"`
 }
 
 // Capabilities describes client capabilities.
@@ -58,15 +58,15 @@ type ClientInfo struct {
 
 // InitializeResult is the result of an initialize call.
 type InitializeResult struct {
-	ProtocolVersion string `json:"protocolVersion"`
+	ProtocolVersion string             `json:"protocolVersion"`
 	Capabilities    ServerCapabilities `json:"capabilities"`
-	ServerInfo      ServerInfo `json:"serverInfo"`
+	ServerInfo      ServerInfo         `json:"serverInfo"`
 }
 
 // ServerCapabilities describes server capabilities.
 type ServerCapabilities struct {
-	Logging Logging `json:"logging,omitempty"`
-	Tools   ToolCapability `json:"tools,omitempty"`
+	Logging      Logging                `json:"logging,omitempty"`
+	Tools        ToolCapability         `json:"tools,omitempty"`
 	Experimental map[string]interface{} `json:"experimental,omitempty"`
 }
 
@@ -117,10 +117,10 @@ type CallToolResult struct {
 
 // ContentBlock represents a content block in a tool result.
 type ContentBlock struct {
-	Type string          `json:"type"` // "text", "image", etc.
-	Text string          `json:"text,omitempty"`
-	Data string          `json:"data,omitempty"`
-	MimeType string       `json:"mimeType,omitempty"`
+	Type     string `json:"type"` // "text", "image", etc.
+	Text     string `json:"text,omitempty"`
+	Data     string `json:"data,omitempty"`
+	MimeType string `json:"mimeType,omitempty"`
 }
 
 // InitializedNotification is sent after successful initialization.

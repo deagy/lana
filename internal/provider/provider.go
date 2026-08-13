@@ -35,11 +35,11 @@ type Request struct {
 
 // Message represents a single message in the conversation.
 type Message struct {
-	Role    string      `json:"role"` // "user", "assistant", "system"
-	Content string      `json:"content"`
-	ToolID  string      `json:"tool_call_id,omitempty"` // For tool results
-	Name    string      `json:"name,omitempty"`         // For tool results
-	ToolUse []ToolUse   `json:"tool_use,omitempty"`     // For assistant tool calls
+	Role    string    `json:"role"` // "user", "assistant", "system"
+	Content string    `json:"content"`
+	ToolID  string    `json:"tool_call_id,omitempty"` // For tool results
+	Name    string    `json:"name,omitempty"`         // For tool results
+	ToolUse []ToolUse `json:"tool_use,omitempty"`     // For assistant tool calls
 }
 
 // ToolUse represents a tool call made by the assistant.

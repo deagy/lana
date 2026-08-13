@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/config"
 	"github.com/deagy/lana/internal/plugin"
+	"github.com/spf13/cobra"
 )
 
 var pluginCmd = &cobra.Command{

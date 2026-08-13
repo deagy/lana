@@ -32,7 +32,7 @@ func RenderDiff(diff SimpleDiff, width int) string {
 	stats := ""
 	if diff.Added > 0 {
 		stats += lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render(
-			"+" + strings.Repeat("█", min(diff.Added, 20)),
+			"+"+strings.Repeat("█", min(diff.Added, 20)),
 		) + " "
 	}
 	if diff.Removed > 0 {

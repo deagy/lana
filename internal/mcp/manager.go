@@ -18,17 +18,17 @@ type NamedTool struct {
 
 // ServerConfig represents configuration for an MCP server.
 type ServerConfig struct {
-	Name                 string
-	Transport            string // "stdio" or "http"
-	Command              string
-	Args                 []string
-	Env                  map[string]string
-	URL                  string
-	Headers              map[string]string
-	Disabled             bool
-	RiskLevel            string
-	StartTimeoutSeconds  int
-	CallTimeoutSeconds   int
+	Name                string
+	Transport           string // "stdio" or "http"
+	Command             string
+	Args                []string
+	Env                 map[string]string
+	URL                 string
+	Headers             map[string]string
+	Disabled            bool
+	RiskLevel           string
+	StartTimeoutSeconds int
+	CallTimeoutSeconds  int
 }
 
 // Manager manages multiple MCP server connections.
