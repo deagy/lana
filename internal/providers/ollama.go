@@ -128,11 +128,23 @@ type ollamaRequestBody struct {
 	Model    string           `json:"model"`
 	Messages []ollamaMessage  `json:"messages"`
 	Stream   bool             `json:"stream"`
+	Tools    []ollamaTool     `json:"tools,omitempty"`
 }
 
 type ollamaMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
+}
+
+type ollamaTool struct {
+	Type     string               `json:"type"`
+	Function ollamaToolDefinition `json:"function"`
+}
+
+type ollamaToolDefinition struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Parameters  json.RawMessage `json:"parameters"`
 }
 
 func (c *OllamaClient) buildRequestBody(req *provider.Request) interface{} {
@@ -144,10 +156,24 @@ func (c *OllamaClient) buildRequestBody(req *provider.Request) interface{} {
 		}
 	}
 
+	// Convert tools to Ollama format
+	tools := make([]ollamaTool, len(req.Tools))
+	for i, tool := range req.Tools {
+		tools[i] = ollamaTool{
+			Type: "function",
+			Function: ollamaToolDefinition{
+				Name:        tool.Name,
+				Description: tool.Description,
+				Parameters:  tool.InputSchema,
+			},
+		}
+	}
+
 	return ollamaRequestBody{
 		Model:    c.model,
 		Messages: msgs,
 		Stream:   true,
+		Tools:    tools,
 	}
 }
 
@@ -158,6 +184,13 @@ type ollamaJSONLReader struct {
 	done            bool
 	roleEmitted     bool
 	pendingContent  string
+	pendingToolCalls []ollamaToolCall
+}
+
+type ollamaToolCall struct {
+	ID   string          `json:"id"`
+	Name string          `json:"name"`
+	Input json.RawMessage `json:"input"`
 }
 
 // NextEvent implements provider.Reader.
@@ -175,6 +208,17 @@ func (r *ollamaJSONLReader) NextEvent(ctx context.Context) (provider.Event, erro
 		}, nil
 	}
 
+	// If we have pending tool calls, emit them first
+	if len(r.pendingToolCalls) > 0 {
+		toolCall := r.pendingToolCalls[0]
+		r.pendingToolCalls = r.pendingToolCalls[1:]
+		return &provider.ToolCallEvent{
+			ID:    toolCall.ID,
+			Name:  toolCall.Name,
+			Input: toolCall.Input,
+		}, nil
+	}
+
 	for r.scanner.Scan() {
 		line := r.scanner.Text()
 		if line == "" {
@@ -189,9 +233,21 @@ func (r *ollamaJSONLReader) NextEvent(ctx context.Context) (provider.Event, erro
 		// Emit role on first message (only once)
 		if !r.roleEmitted && msg.Message.Role != "" {
 			r.roleEmitted = true
-			// Save any content to emit after the start event
+			// Save any content and tool calls to emit after the start event
 			if msg.Message.Content != "" {
 				r.pendingContent = msg.Message.Content
+			}
+			if len(msg.Message.ToolCalls) > 0 {
+				// Convert Ollama tool calls to internal format
+				internalToolCalls := make([]ollamaToolCall, len(msg.Message.ToolCalls))
+				for i, tc := range msg.Message.ToolCalls {
+					internalToolCalls[i] = ollamaToolCall{
+						ID:    fmt.Sprintf("toolcall_%d", i),
+						Name:  tc.Function.Name,
+						Input: tc.Function.Arguments,
+					}
+				}
+				r.pendingToolCalls = internalToolCalls
 			}
 			return &provider.MessageStartEvent{
 				Role: msg.Message.Role,
@@ -202,6 +258,27 @@ func (r *ollamaJSONLReader) NextEvent(ctx context.Context) (provider.Event, erro
 		if msg.Message.Content != "" {
 			return &provider.MessageDeltaEvent{
 				Content: msg.Message.Content,
+			}, nil
+		}
+
+		// Emit tool calls if present
+		if len(msg.Message.ToolCalls) > 0 {
+			// Convert Ollama tool calls to internal format
+			internalToolCalls := make([]ollamaToolCall, len(msg.Message.ToolCalls))
+			for i, tc := range msg.Message.ToolCalls {
+				internalToolCalls[i] = ollamaToolCall{
+					ID:    fmt.Sprintf("toolcall_%d", i), // Ollama doesn't provide IDs, so generate them
+					Name:  tc.Function.Name,
+					Input: tc.Function.Arguments,
+				}
+			}
+			// Queue them and emit the first one
+			r.pendingToolCalls = internalToolCalls[1:]
+			toolCall := internalToolCalls[0]
+			return &provider.ToolCallEvent{
+				ID:    toolCall.ID,
+				Name:  toolCall.Name,
+				Input: toolCall.Input,
 			}, nil
 		}
 
@@ -234,6 +311,12 @@ type ollamaResponseMessage struct {
 	Message   struct {
 		Role    string `json:"role"`
 		Content string `json:"content"`
+		ToolCalls []struct {
+			Function struct {
+				Name      string          `json:"name"`
+				Arguments json.RawMessage `json:"arguments"`
+			} `json:"function"`
+		} `json:"tool_calls,omitempty"`
 	} `json:"message"`
 	Done            bool `json:"done"`
 	TotalDuration   int64 `json:"total_duration,omitempty"`

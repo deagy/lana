@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/approval"
+	"github.com/deagy/lana/internal/mcp"
 	"github.com/deagy/lana/internal/output"
 	"github.com/deagy/lana/internal/providers"
 	"github.com/deagy/lana/internal/runner"
@@ -101,6 +102,14 @@ Approval is auto-denied by default (--approve-all to auto-approve).`,
 		}
 		policy := approval.NewStaticPolicy(policyMode)
 
+		// Create context first
+		ctx := context.Background()
+		if runTimeout > 0 {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, time.Duration(runTimeout)*time.Second)
+			defer cancel()
+		}
+
 		// Initialize tool registry
 		workspace, _ := os.Getwd()
 		registry, err := impl.InitializeRegistry(workspace)
@@ -109,16 +118,38 @@ Approval is auto-denied by default (--approve-all to auto-approve).`,
 			os.Exit(output.ExitGeneralError)
 		}
 
+		// Initialize MCP servers if configured
+		mcpConfigs := make([]mcp.ServerConfig, len(cfg.MCP.Servers))
+		for i, mcpCfg := range cfg.MCP.Servers {
+			mcpConfigs[i] = mcp.ServerConfig{
+				Name:                mcpCfg.Name,
+				Transport:           mcpCfg.Transport,
+				Command:             mcpCfg.Command,
+				Args:                mcpCfg.Args,
+				Env:                 mcpCfg.Env,
+				URL:                 mcpCfg.URL,
+				Headers:             mcpCfg.Headers,
+				Disabled:            mcpCfg.Disabled,
+				RiskLevel:           mcpCfg.RiskLevel,
+				StartTimeoutSeconds: mcpCfg.StartTimeoutSeconds,
+				CallTimeoutSeconds:  mcpCfg.CallTimeoutSeconds,
+			}
+		}
+		if len(mcpConfigs) > 0 {
+			mcpMgr := mcp.NewManager(mcpConfigs)
+			mcpErrors := mcpMgr.Start(ctx)
+			for _, mcpErr := range mcpErrors {
+				fmt.Fprintf(os.Stderr, "Warning: MCP server error: %v\n", mcpErr)
+			}
+			defer mcpMgr.Close()
+			if err := mcp.RegisterTools(registry, mcpMgr); err != nil {
+				fmt.Fprintf(os.Stderr, "Error registering MCP tools: %v\n", err)
+				os.Exit(output.ExitGeneralError)
+			}
+		}
+
 		// Create formatter
 		formatter := output.NewFormatter(runOutput)
-
-		// Execute with timeout
-		ctx := context.Background()
-		if runTimeout > 0 {
-			var cancel context.CancelFunc
-			ctx, cancel = context.WithTimeout(ctx, time.Duration(runTimeout)*time.Second)
-			defer cancel()
-		}
 
 		// Run execution loop (types properly typed now)
 		r := runner.NewNonInteractiveRunner(

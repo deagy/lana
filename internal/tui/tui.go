@@ -10,6 +10,7 @@ import (
 	"github.com/deagy/lana/internal/approval"
 	"github.com/deagy/lana/internal/provider"
 	"github.com/deagy/lana/internal/session"
+	"github.com/deagy/lana/internal/tools"
 )
 
 // Model represents the main TUI state.
@@ -19,6 +20,7 @@ type Model struct {
 	sessionStore   session.Store
 	providerClient provider.Client
 	approvalPolicy approval.Policy
+	registry       *tools.Registry
 
 	// UI components
 	transcript *TranscriptPane
@@ -40,7 +42,7 @@ type Model struct {
 }
 
 // New creates a new TUI model.
-func New(sessionID string, store session.Store, client provider.Client, policy approval.Policy) (*Model, error) {
+func New(sessionID string, store session.Store, client provider.Client, policy approval.Policy, registry *tools.Registry) (*Model, error) {
 	// Load session
 	ctx := context.Background()
 	sess, err := store.Get(ctx, sessionID)
@@ -53,6 +55,7 @@ func New(sessionID string, store session.Store, client provider.Client, policy a
 		sessionStore:   store,
 		providerClient: client,
 		approvalPolicy: policy,
+		registry:       registry,
 		transcript:     NewTranscriptPane(),
 		composer:       NewComposerPane(),
 		sidebar:        NewSidebarPane(sess),

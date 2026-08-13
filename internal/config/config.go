@@ -12,6 +12,7 @@ type Config struct {
 	Provider ProviderConfig
 	Approval ApprovalConfig
 	Session  SessionConfig
+	MCP      MCPConfig
 	Extra    map[string]interface{}
 }
 
@@ -34,6 +35,26 @@ type SessionConfig struct {
 	StorePath string // Directory for session storage
 }
 
+// MCPConfig configures MCP server integration.
+type MCPConfig struct {
+	Servers []MCPServerConfig
+}
+
+// MCPServerConfig represents a single MCP server configuration.
+type MCPServerConfig struct {
+	Name                string
+	Transport           string            // "stdio" (default) or "http"
+	Command             string            // stdio: command to run
+	Args                []string          // stdio: command arguments
+	Env                 map[string]string // stdio: environment variables
+	URL                 string            // http: server URL
+	Headers             map[string]string // http: custom headers
+	Disabled            bool
+	RiskLevel           string // "low", "medium" (default), "high"
+	StartTimeoutSeconds int    // default 10
+	CallTimeoutSeconds  int    // default 60
+}
+
 // Loader handles loading configuration from multiple sources.
 type Loader struct {
 	v *viper.Viper
@@ -49,6 +70,7 @@ func NewLoader() *Loader {
 	v.SetDefault("provider.model", "gpt-4")
 	v.SetDefault("approval.mode", "ask")
 	v.SetDefault("session.store_path", defaultSessionPath())
+	v.SetDefault("mcp.servers", []interface{}{})
 
 	return &Loader{v: v}
 }
@@ -106,6 +128,13 @@ func (l *Loader) WriteGlobal(path string) error {
 }
 
 func (l *Loader) toConfig() (*Config, error) {
+	// Unmarshal MCP servers configuration
+	var mcpServers []MCPServerConfig
+	if err := l.v.UnmarshalKey("mcp.servers", &mcpServers); err != nil {
+		// If there's an error, just use empty list
+		mcpServers = []MCPServerConfig{}
+	}
+
 	return &Config{
 		Provider: ProviderConfig{
 			Name:     l.v.GetString("provider.name"),
@@ -118,6 +147,9 @@ func (l *Loader) toConfig() (*Config, error) {
 		},
 		Session: SessionConfig{
 			StorePath: l.v.GetString("session.store_path"),
+		},
+		MCP: MCPConfig{
+			Servers: mcpServers,
 		},
 		Extra: l.v.AllSettings(),
 	}, nil

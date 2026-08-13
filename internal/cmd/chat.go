@@ -10,10 +10,14 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/approval"
+	"github.com/deagy/lana/internal/execution"
+	"github.com/deagy/lana/internal/mcp"
 	"github.com/deagy/lana/internal/provider"
 	"github.com/deagy/lana/internal/providers"
 	"github.com/deagy/lana/internal/session"
 	"github.com/deagy/lana/internal/storage"
+	"github.com/deagy/lana/internal/tools"
+	"github.com/deagy/lana/internal/tools/impl"
 	"github.com/deagy/lana/internal/tui"
 )
 
@@ -89,6 +93,45 @@ var chatCmd = &cobra.Command{
 		// Approval policy
 		policy := approval.NewStaticPolicy(approval.Mode(cfg.Approval.Mode))
 
+		// Initialize tool registry
+		workspace, _ := os.Getwd()
+		registry, err := impl.InitializeRegistry(workspace)
+		if err != nil {
+			return fmt.Errorf("initialize tools: %w", err)
+		}
+
+		// Initialize MCP servers if configured
+		mcpConfigs := make([]mcp.ServerConfig, len(cfg.MCP.Servers))
+		for i, mcpCfg := range cfg.MCP.Servers {
+			mcpConfigs[i] = mcp.ServerConfig{
+				Name:                mcpCfg.Name,
+				Transport:           mcpCfg.Transport,
+				Command:             mcpCfg.Command,
+				Args:                mcpCfg.Args,
+				Env:                 mcpCfg.Env,
+				URL:                 mcpCfg.URL,
+				Headers:             mcpCfg.Headers,
+				Disabled:            mcpCfg.Disabled,
+				RiskLevel:           mcpCfg.RiskLevel,
+				StartTimeoutSeconds: mcpCfg.StartTimeoutSeconds,
+				CallTimeoutSeconds:  mcpCfg.CallTimeoutSeconds,
+			}
+		}
+		if len(mcpConfigs) > 0 {
+			mcpMgr := mcp.NewManager(mcpConfigs)
+			mcpErrors := mcpMgr.Start(ctx)
+			for _, err := range mcpErrors {
+				fmt.Fprintf(os.Stderr, "Warning: MCP server error: %v\n", err)
+			}
+			defer mcpMgr.Close()
+			if err := mcp.RegisterTools(registry, mcpMgr); err != nil {
+				return fmt.Errorf("register MCP tools: %w", err)
+			}
+		}
+
+		// Create approval broker for interactive approval
+		broker := approval.NewStdinBroker()
+
 		// Determine mode: TUI or CLI
 		useTUI := tui.IsInteractive() && len(args) == 0 && resumeID == ""
 
@@ -97,22 +140,22 @@ var chatCmd = &cobra.Command{
 			prompt := args[0]
 			if useTUI && len(args) == 0 {
 				// TUI mode with prompt
-				return tui.RunWithPrompt(ctx, sessionID, store, providerClient, policy, prompt)
+				return tui.RunWithPrompt(ctx, sessionID, store, providerClient, policy, registry, prompt)
 			}
-			return runSingleTurn(ctx, sess, store, sessionID, providerClient, policy, prompt)
+			return runSingleTurn(ctx, sess, store, sessionID, providerClient, policy, registry, broker, prompt)
 		}
 
 		// Interactive mode
 		if useTUI {
-			return tui.Run(ctx, sessionID, store, providerClient, policy)
+			return tui.Run(ctx, sessionID, store, providerClient, policy, registry)
 		}
 
-		return runInteractiveChat(ctx, sess, store, sessionID, providerClient, policy)
+		return runInteractiveChat(ctx, sess, store, sessionID, providerClient, policy, registry, broker)
 	},
 }
 
 func runSingleTurn(ctx context.Context, sess *session.Session, store session.Store, sessionID string,
-	client provider.Client, policy approval.Policy, prompt string) error {
+	client provider.Client, policy approval.Policy, registry *tools.Registry, broker approval.Broker, prompt string) error {
 
 	fmt.Printf("You: %s\n\n", prompt)
 
@@ -132,10 +175,21 @@ func runSingleTurn(ctx context.Context, sess *session.Session, store session.Sto
 		return err
 	}
 
+	// Build tool schemas
+	toolSchemas := make([]provider.Tool, 0)
+	for _, tool := range registry.List() {
+		toolSchemas = append(toolSchemas, provider.Tool{
+			Name:        tool.Name(),
+			Description: tool.Description(),
+			InputSchema: tool.InputSchema(),
+		})
+	}
+
 	// Send to provider
 	req := &provider.Request{
 		Messages: toProviderMessages(sess.Transcript),
 		Model:    sess.Model,
+		Tools:    toolSchemas,
 	}
 
 	reader, err := client.Chat(ctx, req)
@@ -146,6 +200,7 @@ func runSingleTurn(ctx context.Context, sess *session.Session, store session.Sto
 
 	// Stream response
 	var assistantContent string
+	var toolCalls []session.ToolCall
 	fmt.Print("Lana: ")
 
 	for {
@@ -164,7 +219,29 @@ func runSingleTurn(ctx context.Context, sess *session.Session, store session.Sto
 		case *provider.MessageEndEvent:
 			// Done
 		case *provider.ToolCallEvent:
-			fmt.Printf("\n[Tool Call: %s]\n", e.Name)
+			fmt.Printf("\n[Executing: %s]\n", e.Name)
+			// Execute tool
+			executor := execution.NewExecutor(registry, policy, broker)
+			result, err := executor.Execute(ctx, sessionID, e.Name, e.Input)
+			if err != nil {
+				fmt.Printf("[Tool Error: %v]\n", err)
+				toolCalls = append(toolCalls, session.ToolCall{
+					ID:     e.ID,
+					Name:   e.Name,
+					Input:  e.Input,
+					Status: "failed",
+					Error:  err.Error(),
+				})
+			} else {
+				fmt.Printf("[Tool Result: %s]\n\n", result.Output)
+				toolCalls = append(toolCalls, session.ToolCall{
+					ID:     e.ID,
+					Name:   e.Name,
+					Input:  e.Input,
+					Result: result.Output,
+					Status: "completed",
+				})
+			}
 		case *provider.ErrorEvent:
 			return fmt.Errorf("provider error: %s", e.Message)
 		}
@@ -176,6 +253,7 @@ func runSingleTurn(ctx context.Context, sess *session.Session, store session.Sto
 	assistantMsg := &session.Message{
 		Role:      "assistant",
 		Content:   assistantContent,
+		ToolCalls: toolCalls,
 		Timestamp: time.Now(),
 	}
 	if err := store.AppendMessage(ctx, sessionID, assistantMsg); err != nil {
@@ -187,7 +265,7 @@ func runSingleTurn(ctx context.Context, sess *session.Session, store session.Sto
 }
 
 func runInteractiveChat(ctx context.Context, sess *session.Session, store session.Store, sessionID string,
-	client provider.Client, policy approval.Policy) error {
+	client provider.Client, policy approval.Policy, registry *tools.Registry, broker approval.Broker) error {
 
 	fmt.Printf("Welcome to Lana Chat\nProvider: %s | Model: %s | Session: %s\n\n", client.Name(), client.Model(), sessionID[:8])
 	fmt.Println("Type your message and press Enter. Type 'exit' to quit.")
@@ -231,10 +309,21 @@ func runInteractiveChat(ctx context.Context, sess *session.Session, store sessio
 		}
 		sess = sessRefresh
 
+		// Build tool schemas
+		toolSchemas := make([]provider.Tool, 0)
+		for _, tool := range registry.List() {
+			toolSchemas = append(toolSchemas, provider.Tool{
+				Name:        tool.Name(),
+				Description: tool.Description(),
+				InputSchema: tool.InputSchema(),
+			})
+		}
+
 		// Send to provider
 		req := &provider.Request{
 			Messages: toProviderMessages(sess.Transcript),
 			Model:    sess.Model,
+			Tools:    toolSchemas,
 		}
 
 		chatReader, errChat := client.Chat(ctx, req)
@@ -245,6 +334,7 @@ func runInteractiveChat(ctx context.Context, sess *session.Session, store sessio
 
 		// Stream response
 		var assistantContent string
+		var toolCalls []session.ToolCall
 		fmt.Print("Lana: ")
 
 		hasError := false
@@ -266,7 +356,29 @@ func runInteractiveChat(ctx context.Context, sess *session.Session, store sessio
 			case *provider.MessageEndEvent:
 				// Done
 			case *provider.ToolCallEvent:
-				fmt.Printf("\n[Tool Call: %s]\n", e.Name)
+				fmt.Printf("\n[Executing: %s]\n", e.Name)
+				// Execute tool
+				executor := execution.NewExecutor(registry, policy, broker)
+				result, err := executor.Execute(ctx, sessionID, e.Name, e.Input)
+				if err != nil {
+					fmt.Printf("[Tool Error: %v]\n", err)
+					toolCalls = append(toolCalls, session.ToolCall{
+						ID:     e.ID,
+						Name:   e.Name,
+						Input:  e.Input,
+						Status: "failed",
+						Error:  err.Error(),
+					})
+				} else {
+					fmt.Printf("[Tool Result: %s]\n\n", result.Output)
+					toolCalls = append(toolCalls, session.ToolCall{
+						ID:     e.ID,
+						Name:   e.Name,
+						Input:  e.Input,
+						Result: result.Output,
+						Status: "completed",
+					})
+				}
 			case *provider.ErrorEvent:
 				fmt.Printf("\nError: %s\n", e.Message)
 				hasError = true
@@ -282,6 +394,7 @@ func runInteractiveChat(ctx context.Context, sess *session.Session, store sessio
 			assistantMsg := &session.Message{
 				Role:      "assistant",
 				Content:   assistantContent,
+				ToolCalls: toolCalls,
 				Timestamp: time.Now(),
 			}
 			if err := store.AppendMessage(ctx, sessionID, assistantMsg); err != nil {

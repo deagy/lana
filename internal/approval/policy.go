@@ -1,7 +1,12 @@
 package approval
 
 import (
+	"bufio"
 	"context"
+	"fmt"
+	"os"
+	"strings"
+
 	"github.com/deagy/lana/internal/tools"
 )
 
@@ -66,4 +71,30 @@ type NullBroker struct{}
 
 func (nb *NullBroker) Request(ctx context.Context, toolName string, description string) (bool, error) {
 	return false, nil
+}
+
+// StdinBroker prompts the user via stdin/stdout for approval.
+type StdinBroker struct{}
+
+// NewStdinBroker creates a new stdin-based approval broker.
+func NewStdinBroker() *StdinBroker {
+	return &StdinBroker{}
+}
+
+// Request implements Broker.
+func (sb *StdinBroker) Request(ctx context.Context, toolName string, description string) (bool, error) {
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Fprintf(os.Stderr, "\n⚠️  Tool Approval Required\n")
+	fmt.Fprintf(os.Stderr, "Tool: %s\n", toolName)
+	fmt.Fprintf(os.Stderr, "%s\n\n", description)
+	fmt.Fprintf(os.Stderr, "Approve? (y/n): ")
+
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false, err
+	}
+
+	response = strings.TrimSpace(strings.ToLower(response))
+	return response == "y" || response == "yes", nil
 }
