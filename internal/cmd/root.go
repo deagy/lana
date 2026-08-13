@@ -43,6 +43,7 @@ func init() {
 		"path to global config file",
 	)
 
+	rootCmd.AddCommand(chatCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(providersCmd)

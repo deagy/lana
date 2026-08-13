@@ -45,7 +45,7 @@ func NewLoader() *Loader {
 	v.SetConfigType("yaml")
 
 	// Set defaults
-	v.SetDefault("provider.name", "openai")
+	v.SetDefault("provider.name", "openai-compat")
 	v.SetDefault("provider.model", "gpt-4")
 	v.SetDefault("approval.mode", "ask")
 	v.SetDefault("session.store_path", defaultSessionPath())

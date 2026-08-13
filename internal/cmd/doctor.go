@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/deagy/lana/internal/providers"
 )
 
 var doctorCmd = &cobra.Command{
@@ -35,12 +37,33 @@ var doctorCmd = &cobra.Command{
 		}
 		fmt.Println()
 
-		// Check provider connectivity (Phase 2)
+		// Check provider connectivity
 		fmt.Println("Provider Connectivity:")
-		fmt.Println("  (Not yet implemented in Phase 1)")
+		if cfg != nil {
+			factory := providers.NewFactory(
+				cfg.Provider.Name,
+				cfg.Provider.Model,
+				cfg.Provider.Endpoint,
+				cfg.Provider.APIKey,
+			)
+
+			client, err := factory.Create()
+			if err != nil {
+				fmt.Printf("  ✗ Error creating provider: %v\n", err)
+			} else {
+				models, err := client.SupportedModels(context.Background())
+				if err != nil {
+					fmt.Printf("  ✗ Connection failed: %v\n", err)
+				} else {
+					fmt.Printf("  ✓ Connected to %s\n", client.Name())
+					fmt.Printf("    Current model: %s\n", client.Model())
+					fmt.Printf("    Available models: %d\n", len(models))
+				}
+			}
+		}
 		fmt.Println()
 
-		fmt.Println("✓ All checks passed")
+		fmt.Println("✓ System health check complete")
 		return nil
 	},
 }
