@@ -20,10 +20,17 @@ type Tool interface {
 	Execute(ctx context.Context, input json.RawMessage) (string, error)
 }
 
-// Executor is a pluggable handler for a specific tool.
-type Executor interface {
+// SimpleExecutor is a pluggable handler for a specific tool (non-context version).
+type SimpleExecutor interface {
 	// Execute runs the tool and returns a result string and error.
-	Execute(ctx context.Context, input json.RawMessage) (string, error)
+	Execute(input interface{}, input2 json.RawMessage) (string, error)
+}
+
+// ExecutorFunc wraps a function to implement SimpleExecutor.
+type ExecutorFunc func(input interface{}, data json.RawMessage) (string, error)
+
+func (f ExecutorFunc) Execute(input interface{}, data json.RawMessage) (string, error) {
+	return f(input, data)
 }
 
 // Definition is a complete tool definition.
@@ -31,7 +38,7 @@ type Definition struct {
 	NameVal        string
 	DescriptionVal string
 	SchemaVal      json.RawMessage
-	ExecutorVal    Executor
+	ExecutorVal    SimpleExecutor
 	RiskLevel      RiskLevel
 	RequiresApproval bool
 }
@@ -49,7 +56,7 @@ func (d *Definition) InputSchema() json.RawMessage {
 }
 
 func (d *Definition) Execute(ctx context.Context, input json.RawMessage) (string, error) {
-	return d.ExecutorVal.Execute(ctx, input)
+	return d.ExecutorVal.Execute(nil, input)
 }
 
 // RiskLevel categorizes the risk of executing a tool.
