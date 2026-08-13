@@ -8,6 +8,7 @@ import (
 
 	"github.com/deagy/lana/internal/config"
 	"github.com/deagy/lana/internal/mcp"
+	"github.com/deagy/lana/internal/tools/impl"
 	"github.com/spf13/cobra"
 )
 
@@ -300,12 +301,56 @@ Otherwise, all configured servers are queried.`,
 	},
 }
 
+var mcpServerCmd = &cobra.Command{
+	Use:   "server",
+	Short: "Run Lana as an MCP server",
+	Long: `Run Lana as an MCP server over stdio or HTTP.
+
+This makes Lana's tools (file operations, git, shell execution, etc.) available
+to other MCP clients like Claude or other AI agents.
+
+Examples:
+  # Run stdio server (for subprocess clients)
+  lana mcp server
+
+  # Run HTTP server
+  lana mcp server --port 3000`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
+
+		// Initialize tool registry
+		workspace, _ := os.Getwd()
+		registry, err := impl.InitializeRegistry(workspace)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error initializing tools: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Create MCP server
+		server := mcp.NewServer(registry)
+
+		// Get port flag
+		port, _ := cmd.Flags().GetInt("port")
+
+		if port > 0 {
+			// HTTP server (TODO: implement in Part 3)
+			fmt.Fprintf(os.Stderr, "HTTP server not yet implemented\n")
+			os.Exit(1)
+		}
+
+		// Stdio server
+		fmt.Fprintf(os.Stderr, "Starting Lana MCP server (stdio)...\n")
+		return mcp.StartStdioServer(ctx, server)
+	},
+}
+
 func init() {
 	// Add subcommands to mcp command
 	mcpCmd.AddCommand(mcpListCmd)
 	mcpCmd.AddCommand(mcpAddCmd)
 	mcpCmd.AddCommand(mcpRemoveCmd)
 	mcpCmd.AddCommand(mcpToolsCmd)
+	mcpCmd.AddCommand(mcpServerCmd)
 
 	// mcpAddCmd flags
 	mcpAddCmd.Flags().String("transport", "stdio", "Transport type: 'stdio' (default) or 'http'")
@@ -318,6 +363,9 @@ func init() {
 	mcpAddCmd.Flags().Bool("disabled", false, "Disable this server")
 	mcpAddCmd.Flags().Int("start-timeout", 10, "Timeout for server startup (seconds)")
 	mcpAddCmd.Flags().Int("call-timeout", 60, "Timeout for tool calls (seconds)")
+
+	// mcpServerCmd flags
+	mcpServerCmd.Flags().Int("port", 0, "HTTP port (0 = stdio, 3000+ for HTTP)")
 
 	// Add mcp command to root
 	rootCmd.AddCommand(mcpCmd)
