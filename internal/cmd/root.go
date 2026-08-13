@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/config"
+	"github.com/deagy/lana/internal/plugin"
 )
 
 var (
@@ -15,6 +17,7 @@ var (
 
 // Execute runs the root command.
 func Execute() error {
+	registerInstalledPlugins()
 	return rootCmd.Execute()
 }
 
@@ -60,3 +63,34 @@ func defaultGlobalConfigPath() string {
 	}
 	return filepath.Join(home, ".lana", "config.yaml")
 }
+
+// registerInstalledPlugins scans for installed plugins and registers them as subcommands.
+// Non-fatal errors (e.g., one broken plugin) are logged to stderr but don't stop registration.
+func registerInstalledPlugins() {
+	pluginsDir := defaultPluginsPath()
+
+	plugins, err := plugin.InstalledPlugins(pluginsDir)
+	if err != nil {
+		// Log but don't fail
+		return
+	}
+
+	for _, p := range plugins {
+		// Capture plugin reference for closure
+		pCopy := p
+		pluginDirCopy := filepath.Join(pluginsDir, p.Name)
+
+		cmd := &cobra.Command{
+			Use:               pCopy.Name,
+			Short:             pCopy.Description,
+			DisableFlagParsing: true,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				ctx := context.Background()
+				return plugin.Run(ctx, pluginDirCopy, pCopy, args, os.Stdin, os.Stdout, os.Stderr)
+			},
+		}
+
+		rootCmd.AddCommand(cmd)
+	}
+}
+
