@@ -369,9 +369,12 @@ Examples:
 		port, _ := cmd.Flags().GetInt("port")
 
 		if port > 0 {
-			// HTTP server (TODO: implement in Part 3)
-			fmt.Fprintf(os.Stderr, "HTTP server not yet implemented\n")
-			os.Exit(1)
+			// HTTP server
+			fmt.Fprintf(os.Stderr, "Starting Lana MCP server (HTTP)...\n")
+			fmt.Fprintf(os.Stderr, "Listening on port %d\n", port)
+			fmt.Fprintf(os.Stderr, "Tools available: built-in + any configured MCP servers\n")
+			fmt.Fprintf(os.Stderr, "POST http://localhost:%d/mcp with JSON-RPC requests\n", port)
+			return mcp.StartHTTPServer(ctx, server, port, "")
 		}
 
 		// Stdio server
