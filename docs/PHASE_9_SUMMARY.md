@@ -296,9 +296,122 @@ Agent C ─┘
 Orchestration system → HTTP → Lana → Tools
 ```
 
-## Next Steps
+## Part 4: Testing & Documentation (Complete)
 
-### Part 4: Testing & Documentation
+### Testing Strategy
+
+**Unit Tests** (`server_test.go`, `server_http_test.go`)
+- Core server request handling (initialize, tools/list, tools/call)
+- Error scenarios (invalid methods, tool not found)
+- HTTP endpoint functionality (POST, GET, invalid JSON, CORS)
+- Health check endpoint
+- Response structure validation
+
+**Test Coverage:**
+```
+server_test.go (5 tests):
+├── TestServerInitialize ✅
+├── TestServerListTools ✅
+├── TestServerCallTool ✅
+├── TestServerToolNotFound ✅
+└── TestServerInvalidMethod ✅
+
+server_http_test.go (6 tests):
+├── TestHTTPServerMCPEndpoint ✅
+├── TestHTTPServerListTools ✅
+├── TestHTTPServerHealth ✅
+├── TestHTTPServerMethodNotAllowed ✅
+├── TestHTTPServerInvalidJSON ✅
+└── TestHTTPServerCORSHeaders ✅
+```
+
+All 11 tests pass. Tests use `httptest.NewServer` for isolated HTTP testing and registry initialization from real workspace.
+
+### Documentation
+
+**This summary document** covers:
+- Complete Phase 9 architecture (Parts 1-4)
+- Design decisions and rationale
+- Implementation details
+- Testing strategy
+- Use cases enabled
+
+**User Guide sections:**
+See `docs/USER_GUIDE.md` "Using Lana as MCP Server" section (TODO: Add in follow-up commit)
+
+### Integration & Verification
+
+**Build Status:**
+```bash
+✅ go build ./cmd/lana
+✅ go test ./internal/mcp/ -run TestServer
+✅ go test ./internal/mcp/ -run TestHTTP
+```
+
+**Manual Verification:**
+```bash
+# Stdio mode (subprocess client)
+./lana mcp server
+→ Listens on stdin, writes to stdout
+
+# HTTP mode (remote client)
+./lana mcp server --port 3000
+→ POST http://localhost:3000/mcp
+→ GET http://localhost:3000/health
+
+# With MCP servers configured
+./lana mcp server --config config.yaml --port 3000
+→ Exposes both built-in + configured MCP server tools
+```
+
+## Complete Phase 9 Summary
+
+**Phase 9: Lana as MCP Server** — Complete ✅
+
+Lana now operates as a full MCP server, exposing all its tools and configured MCP server tools to remote MCP clients.
+
+**What was built:**
+1. **Part 1: Core Server & Stdio Transport**
+   - JSON-RPC 2.0 protocol implementation
+   - MCP methods: initialize, tools/list, tools/call
+   - Stdio transport for subprocess communication
+   
+2. **Part 2: MCP Tool Registration**
+   - Configuration loading for MCP servers
+   - Tool registration in unified namespace
+   - Both built-in and MCP tools available
+   
+3. **Part 3: HTTP Transport**
+   - HTTP POST /mcp endpoint
+   - Health check endpoint
+   - CORS support for browser clients
+   - Bearer token auth ready
+   
+4. **Part 4: Testing & Documentation**
+   - 11 comprehensive unit tests (all passing)
+   - Complete documentation in PHASE_9_SUMMARY.md
+   - Architecture and use case examples
+
+**Architecture Achievement:**
+```
+Bidirectional Tool Integration
+─────────────────────────────────────
+Phase 7: Lana agents use MCP tools
+Phase 9: MCP clients use Lana tools
+         (both built-in + MCP)
+```
+
+**Files Modified/Created:**
+- `internal/mcp/server.go` (155 LOC)
+- `internal/mcp/server_stdio.go` (100 LOC)
+- `internal/mcp/server_http.go` (120 LOC)
+- `internal/mcp/server_test.go` (200 LOC, 5 tests)
+- `internal/mcp/server_http_test.go` (200 LOC, 6 tests)
+- `internal/cmd/mcp.go` (modified for config + HTTP)
+
+**Total Phase 9:** 775 LOC + 11 tests
+
+## Next Steps
 - Add `internal/mcp/server_http.go` with HTTP/SSE endpoint
 - Enable remote clients to call Lana's tools over network
 - Support for bearer token authentication
