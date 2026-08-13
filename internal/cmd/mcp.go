@@ -326,6 +326,42 @@ Examples:
 			os.Exit(1)
 		}
 
+		// Initialize MCP servers from config if available
+		if cfg != nil && len(cfg.MCP.Servers) > 0 {
+			fmt.Fprintf(os.Stderr, "Loading %d MCP server(s)...\n", len(cfg.MCP.Servers))
+
+			// Convert config to MCP manager format
+			mcpConfigs := make([]mcp.ServerConfig, len(cfg.MCP.Servers))
+			for i, mcpCfg := range cfg.MCP.Servers {
+				mcpConfigs[i] = mcp.ServerConfig{
+					Name:                mcpCfg.Name,
+					Transport:           mcpCfg.Transport,
+					Command:             mcpCfg.Command,
+					Args:                mcpCfg.Args,
+					Env:                 mcpCfg.Env,
+					URL:                 mcpCfg.URL,
+					Headers:             mcpCfg.Headers,
+					RiskLevel:           mcpCfg.RiskLevel,
+					Disabled:            mcpCfg.Disabled,
+					StartTimeoutSeconds: mcpCfg.StartTimeoutSeconds,
+					CallTimeoutSeconds:  mcpCfg.CallTimeoutSeconds,
+				}
+			}
+
+			// Start MCP manager
+			mcpMgr := mcp.NewManager(mcpConfigs)
+			mcpErrors := mcpMgr.Start(ctx)
+			for _, mcpErr := range mcpErrors {
+				fmt.Fprintf(os.Stderr, "Warning: MCP server error: %v\n", mcpErr)
+			}
+			defer mcpMgr.Close()
+
+			// Register MCP tools
+			if err := mcp.RegisterTools(registry, mcpMgr); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Error registering MCP tools: %v\n", err)
+			}
+		}
+
 		// Create MCP server
 		server := mcp.NewServer(registry)
 
@@ -340,6 +376,7 @@ Examples:
 
 		// Stdio server
 		fmt.Fprintf(os.Stderr, "Starting Lana MCP server (stdio)...\n")
+		fmt.Fprintf(os.Stderr, "Tools available: built-in + any configured MCP servers\n")
 		return mcp.StartStdioServer(ctx, server)
 	},
 }
