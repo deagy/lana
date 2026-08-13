@@ -44,6 +44,7 @@ func init() {
 	)
 
 	rootCmd.AddCommand(chatCmd)
+	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(providersCmd)
