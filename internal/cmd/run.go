@@ -9,11 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/deagy/lana/internal/approval"
+	"github.com/deagy/lana/internal/output"
 	"github.com/deagy/lana/internal/providers"
+	"github.com/deagy/lana/internal/runner"
 	"github.com/deagy/lana/internal/session"
 	"github.com/deagy/lana/internal/storage"
 	"github.com/deagy/lana/internal/tools/impl"
-	"github.com/deagy/lana/internal/output"
 )
 
 var (
@@ -119,8 +120,17 @@ Approval is auto-denied by default (--approve-all to auto-approve).`,
 			defer cancel()
 		}
 
-		// Run execution loop
-		err = executeRun(ctx, sessionID, store, providerClient, policy, registry, formatter, prompt)
+		// Run execution loop (types properly typed now)
+		r := runner.NewNonInteractiveRunner(
+			sessionID,
+			store,
+			providerClient,
+			registry,
+			policy,
+			formatter,
+			runMaxTurns,
+		)
+		err = r.Run(ctx, prompt)
 		if err != nil {
 			if runOutput == "json" || runOutput == "jsonl" {
 				result := output.Result{
@@ -154,21 +164,6 @@ func init() {
 	runCmd.Flags().IntVar(&runTimeout, "timeout", 0, "timeout in seconds (0=no limit)")
 	runCmd.Flags().BoolVar(&runSaveSession, "save-session", false, "save session after execution")
 	runCmd.Flags().IntVar(&runMaxTurns, "max-turns", 10, "maximum agent turns")
-}
-
-// executeRun is a placeholder that will be implemented in the next commit.
-func executeRun(ctx context.Context, sessionID string, store *storage.FileStore,
-	client interface{}, policy interface{}, registry interface{},
-	formatter output.Formatter, prompt string) error {
-	// Phase 5 Part 2: Full implementation with streaming
-	result := output.Result{
-		Status:    "message",
-		Message:   "Phase 5 execution not yet implemented",
-		Timestamp: time.Now().Unix(),
-	}
-	text, _ := formatter.FormatResult(result)
-	fmt.Println(text)
-	return nil
 }
 
 func truncatePrompt(s string, maxLen int) string {
