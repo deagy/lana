@@ -1,7 +1,7 @@
 # Phase 9: Lana as MCP Server
 
-**Status:** Part 1 Complete ✅ (Stdio Transport)  
-**Commit:** a642b73  
+**Status:** Part 1-2 Complete ✅ (Stdio Transport + MCP Tool Registration)  
+**Commits:** a642b73 (Part 1), 94e028f (Part 2)  
 **Date:** 2026-08-13
 
 ## Overview
@@ -11,6 +11,62 @@ Phase 9 reverses the client/server relationship. Instead of Lana *consuming* too
 - **Claude and other AI agents** to call Lana's tools directly
 - **Bidirectional tool integration** — Lana agents can use MCP servers, and MCP clients can use Lana tools
 - **Distributed tool ecosystems** — Lana becomes a composable component in multi-agent systems
+
+## Part 2: MCP Server Tool Registration (Complete)
+
+### Overview
+
+Extends the MCP server to expose both Lana's built-in tools AND any configured MCP servers' tools in a unified namespace. This enables seamless bidirectional tool integration.
+
+**Architecture:**
+```
+MCP Client (Claude)
+    ↓
+Lana MCP Server
+    ├── Built-in tools: read_file, write_file, exec, git ops, search (9)
+    └── MCP tools: mcp__<server>__<tool> (from configured servers)
+```
+
+### Implementation
+
+**Changes to `internal/cmd/mcp.go`:**
+- mcpServerCmd now loads configuration
+- Initializes MCP manager with configured servers (if any)
+- Starts MCP servers (with partial-failure tolerance for errors)
+- Registers MCP tools into registry via `mcp.RegisterTools()`
+- Reports status: "Loading X MCP server(s)..."
+
+**Tool Namespace:**
+- Built-in tools: `read_file`, `write_file`, `list_files`, `exec`, `git_commit`, etc.
+- MCP tools: `mcp__fakeserver__echo`, `mcp__fakeserver__reverse` (with server prefix)
+- No collisions (namespacing prevents conflicts)
+
+### Testing
+
+**Without config (only built-in):**
+```bash
+./lana mcp server
+→ tools/list returns 9 tools (read_file, write_file, exec, git ops, search)
+```
+
+**With MCP config (built-in + MCP):**
+```bash
+./lana mcp server --config test-mcp-config.yaml
+→ tools/list returns 11 tools (9 built-in + 2 from fakeserver)
+→ Tools: read_file, write_file, exec, git ops, search, mcp__fakeserver__echo, mcp__fakeserver__reverse
+```
+
+**Tool execution verified:**
+- Built-in tools work: `read_file` successfully reads files
+- MCP tools registered and callable
+
+### Design Highlights
+
+**Unified Namespace:** Both Lana's native tools and MCP server tools appear in a single `tools/list` response, making discovery seamless for MCP clients.
+
+**Error Tolerance:** MCP server startup errors don't block the server from starting. Warnings logged, server continues with available tools.
+
+**Reuses Existing Code:** Leverages Phase 7's `mcp.Manager`, `mcp.RegisterTools()`, and configuration loading.
 
 ## Part 1: Stdio Transport (Complete)
 
@@ -134,11 +190,6 @@ If namespace collision is a problem, a future phase could add prefixes.
 5. **No resource operations** — MCP resources not exposed (only tools)
 
 ## Next Steps
-
-### Part 2: MCP Server Tool Registration
-- Modify server to also expose registered MCP server tools
-- When a plugin declares MCP servers, expose their tools through Lana's MCP server
-- This creates a unified tool namespace
 
 ### Part 3: HTTP Transport
 - Add `internal/mcp/server_http.go` with HTTP/SSE endpoint
