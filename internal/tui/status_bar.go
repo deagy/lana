@@ -15,6 +15,7 @@ type StatusBar struct {
 	streaming bool
 	error     string
 	width     int
+	theme     Theme
 }
 
 // NewStatusBar creates a new status bar.
@@ -24,6 +25,7 @@ func NewStatusBar(provider, model, sessionID string) *StatusBar {
 		model:     model,
 		sessionID: sessionID[:8], // Truncate to 8 chars
 		streaming: false,
+		theme:     DefaultTheme(),
 	}
 }
 
@@ -62,7 +64,8 @@ func (sb *StatusBar) Render(width int) string {
 
 	// Error
 	if sb.error != "" {
-		parts = append(parts, fmt.Sprintf("⚠ %s", sb.error))
+		errorStyle := lipgloss.NewStyle().Foreground(sb.theme.ErrorColor)
+		parts = append(parts, errorStyle.Render(fmt.Sprintf("⚠ %s", sb.error)))
 	}
 
 	// Help text
@@ -80,8 +83,8 @@ func (sb *StatusBar) Render(width int) string {
 
 	// Style
 	style := lipgloss.NewStyle().
-		Background(lipgloss.Color("8")).
-		Foreground(lipgloss.Color("15")).
+		Background(sb.theme.StatusBGColor).
+		Foreground(sb.theme.StatusFGColor).
 		Width(width)
 
 	return style.Render(statusText)

@@ -37,8 +37,8 @@ type Model struct {
 	mode        string // "normal", "help"
 
 	// Streaming state
-	streaming    bool
-	pendingInput string
+	streaming  bool
+	eventsChan chan tea.Msg
 }
 
 // New creates a new TUI model.
@@ -63,6 +63,7 @@ func New(sessionID string, store session.Store, client provider.Client, policy a
 		focusedPane:    "composer",
 		mode:           "normal",
 		streaming:      false,
+		eventsChan:     make(chan tea.Msg, 100),
 	}, nil
 }
 
@@ -81,7 +82,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.layout()
-		return m, nil
+		return m, m.listenForEvents()
 
 	case ChatResponseEvent:
 		return m.handleChatResponse(msg)
@@ -89,15 +90,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ChatErrorEvent:
 		m.statusBar.SetError(msg.Error.Error())
 		m.streaming = false
-		return m, nil
+		m.composer.Reset()
+		return m, m.listenForEvents()
 
 	case ChatDoneEvent:
 		m.streaming = false
 		m.statusBar.ClearError()
-		return m, nil
+		return m, m.listenForEvents()
 	}
 
-	return m, nil
+	return m, m.listenForEvents()
 }
 
 // View implements tea.Model.
@@ -160,11 +162,15 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "tab":
+		m.unfocusCurrent()
 		m.focusedPane = m.nextPane()
+		m.focusCurrent()
 		return m, nil
 
 	case "shift+tab":
+		m.unfocusCurrent()
 		m.focusedPane = m.prevPane()
+		m.focusCurrent()
 		return m, nil
 	}
 
@@ -273,25 +279,37 @@ func (m *Model) sendMessage(input string) tea.Cmd {
 			return ChatErrorEvent{Error: err}
 		}
 
-		// Stream events (simplified for Phase 3)
-		// TODO: Implement streaming via channels or commands in Phase 4+
+		// Stream events to channel in background
 		go func() {
 			for {
-				_, err := reader.NextEvent(ctx)
+				event, err := reader.NextEvent(ctx)
 				if err == io.EOF {
-					// Use a command to send done event
+					m.eventsChan <- ChatDoneEvent{}
 					return
 				}
 				if err != nil {
-					// Error event already sent
+					m.eventsChan <- ChatErrorEvent{Error: err}
 					return
 				}
-				// Send event back to update loop
-				// This would need a channel-based architecture
+				if event != nil {
+					m.eventsChan <- ChatResponseEvent{Event: event}
+				}
 			}
 		}()
 
 		return nil
+	}
+}
+
+// listenForEvents returns a command that listens on the events channel and pumps messages into the update loop.
+func (m *Model) listenForEvents() tea.Cmd {
+	return func() tea.Msg {
+		select {
+		case msg := <-m.eventsChan:
+			return msg
+		default:
+			return nil
+		}
 	}
 }
 
@@ -320,6 +338,18 @@ func (m *Model) prevPane() string {
 		}
 	}
 	return "composer"
+}
+
+func (m *Model) focusCurrent() {
+	if m.focusedPane == "composer" {
+		m.composer.SetFocus(true)
+	}
+}
+
+func (m *Model) unfocusCurrent() {
+	if m.focusedPane == "composer" {
+		m.composer.SetFocus(false)
+	}
 }
 
 func (m *Model) viewHelp() string {

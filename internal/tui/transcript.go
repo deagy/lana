@@ -16,6 +16,7 @@ type TranscriptPane struct {
 	cachedLines   []string
 	cachedWidth   int
 	messageCount  int // Track message count to detect changes
+	theme         Theme
 }
 
 type TranscriptMessage struct {
@@ -28,6 +29,7 @@ type TranscriptMessage struct {
 func NewTranscriptPane() *TranscriptPane {
 	return &TranscriptPane{
 		messages: []TranscriptMessage{},
+		theme:    DefaultTheme(),
 	}
 }
 
@@ -182,10 +184,10 @@ func (tp *TranscriptPane) Render(width, height int) string {
 func (tp *TranscriptPane) renderMessage(msg TranscriptMessage, width int) []string {
 	var lines []string
 
-	// Role header
-	roleColor := lipgloss.Color("6")
+	// Role header - use theme colors
+	roleColor := tp.theme.AssistantColor
 	if msg.IsUser {
-		roleColor = lipgloss.Color("4")
+		roleColor = tp.theme.UserColor
 	}
 
 	roleStyle := lipgloss.NewStyle().Foreground(roleColor).Bold(true)
