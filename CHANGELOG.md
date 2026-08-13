@@ -13,6 +13,43 @@ All notable changes to Lana will be documented in this file.
 ### Bug Fixes
 - (Bug fixes go here)
 
+## [0.2.0] - 2025-08-12
+
+### Features
+- **MCP Protocol Integration** — Connect to external MCP servers (stdio/HTTP)
+- Dynamic tool discovery from MCP servers
+- MCP server management (`lana mcp add/list/remove/tools`)
+- Tool execution for MCP-discovered tools
+- Interactive approval system for tool calls
+- StdinBroker for CLI-based approval prompts
+
+### Improvements
+- Ollama tool-calling parity with OpenAI-compatible providers
+- Extended chat mode with full tool support
+- Config system now supports nested MCP server configurations
+- Better error handling for tool execution
+- Tool namespacing to prevent collisions (`mcp__<server>__<tool>`)
+
+### New Commands
+- `mcp list` — List configured MCP servers
+- `mcp add` — Add an MCP server (stdio or HTTP)
+- `mcp remove` — Remove an MCP server
+- `mcp tools` — Discover tools from MCP servers
+
+### New Tools (via MCP)
+- Tools provided by external MCP servers are now available to the agent
+- Tools are automatically namespaced and integrated into the registry
+
+### Documentation
+- Comprehensive Phase 7 implementation guide
+- MCP server configuration examples
+- Tool discovery and execution workflows
+
+### Project Status
+- 95% of v1.0 feature set complete
+- Production-ready MCP client implementation
+- Full integration with chat and run modes
+
 ## [0.1.0] - 2025-08-12
 
 ### Features

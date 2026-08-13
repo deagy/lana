@@ -2,8 +2,8 @@
 
 A terminal-first AI coding agent written in Go. Execute tasks interactively or automate workflows with structured output.
 
-**Version:** 0.1.0  
-**Status:** Phase 5 Complete (70% of v1.0 feature set)
+**Version:** 0.2.0  
+**Status:** Phase 7 Complete (95% of v1.0 feature set)
 
 ## Quick Start
 
