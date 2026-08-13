@@ -9,10 +9,13 @@ import (
 
 // TranscriptPane displays the conversation history.
 type TranscriptPane struct {
-	messages     []TranscriptMessage
-	scrollOffset int
-	width        int
-	height       int
+	messages      []TranscriptMessage
+	scrollOffset  int
+	width         int
+	height        int
+	cachedLines   []string
+	cachedWidth   int
+	messageCount  int // Track message count to detect changes
 }
 
 type TranscriptMessage struct {
@@ -36,6 +39,7 @@ func (tp *TranscriptPane) StartMessage(role string) {
 		IsUser:  role == "user",
 	}
 	tp.messages = append(tp.messages, msg)
+	tp.invalidateCache()
 	tp.ScrollToEnd()
 }
 
@@ -54,6 +58,7 @@ func (tp *TranscriptPane) AppendToolCall(name string, input string) {
 		IsUser:  false,
 	}
 	tp.messages = append(tp.messages, msg)
+	tp.invalidateCache()
 	tp.ScrollToEnd()
 }
 
@@ -75,6 +80,7 @@ func (tp *TranscriptPane) AppendToolResult(name string, output string, err strin
 		IsUser:  false,
 	}
 	tp.messages = append(tp.messages, msg)
+	tp.invalidateCache()
 	tp.ScrollToEnd()
 }
 
@@ -86,19 +92,17 @@ func (tp *TranscriptPane) GetLastMessage() string {
 	return ""
 }
 
-// ScrollUp scrolls the transcript up.
+// ScrollUp scrolls the transcript up by one line.
 func (tp *TranscriptPane) ScrollUp() {
 	if tp.scrollOffset > 0 {
 		tp.scrollOffset--
 	}
 }
 
-// ScrollDown scrolls the transcript down.
+// ScrollDown scrolls the transcript down by one line.
 func (tp *TranscriptPane) ScrollDown() {
-	maxScroll := len(tp.messages) - 1
-	if tp.scrollOffset < maxScroll {
-		tp.scrollOffset++
-	}
+	tp.scrollOffset++
+	// Will be bounded in Render() once we know cache size
 }
 
 // ScrollToStart scrolls to the beginning.
@@ -106,10 +110,30 @@ func (tp *TranscriptPane) ScrollToStart() {
 	tp.scrollOffset = 0
 }
 
-// ScrollToEnd scrolls to the end.
+// ScrollToEnd scrolls to the end (set to max so viewport shows last N lines).
 func (tp *TranscriptPane) ScrollToEnd() {
-	maxScroll := len(tp.messages) - 1
-	tp.scrollOffset = maxScroll
+	tp.scrollOffset = 999999 // Large number; will be bounded in Render()
+}
+
+// invalidateCache marks the cache as stale.
+func (tp *TranscriptPane) invalidateCache() {
+	tp.messageCount = len(tp.messages)
+	tp.cachedLines = nil
+	tp.cachedWidth = 0
+}
+
+// rebuildLinesIfNeeded rebuilds the line cache if width changed or messages changed.
+func (tp *TranscriptPane) rebuildLinesIfNeeded(width int) {
+	if tp.cachedLines != nil && tp.cachedWidth == width && tp.messageCount == len(tp.messages) {
+		return // Cache is still valid
+	}
+
+	tp.cachedLines = nil
+	for _, msg := range tp.messages {
+		tp.cachedLines = append(tp.cachedLines, tp.renderMessage(msg, width-2)...)
+	}
+	tp.cachedWidth = width
+	tp.messageCount = len(tp.messages)
 }
 
 // Render renders the transcript pane.
@@ -121,21 +145,29 @@ func (tp *TranscriptPane) Render(width, height int) string {
 		return tp.renderEmpty()
 	}
 
-	var lines []string
-	for _, msg := range tp.messages {
-		lines = append(lines, tp.renderMessage(msg, width-2)...)
+	// Build line cache if needed
+	tp.rebuildLinesIfNeeded(width)
+
+	// Bound scroll offset to valid range
+	maxScroll := len(tp.cachedLines) - height
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if tp.scrollOffset > maxScroll {
+		tp.scrollOffset = maxScroll
+	}
+	if tp.scrollOffset < 0 {
+		tp.scrollOffset = 0
 	}
 
-	// Apply scroll offset
-	if len(lines) > height {
-		startIdx := len(lines) - height
-		if startIdx < 0 {
-			startIdx = 0
-		}
-		lines = lines[startIdx:]
+	// Get visible lines
+	endIdx := tp.scrollOffset + height
+	if endIdx > len(tp.cachedLines) {
+		endIdx = len(tp.cachedLines)
 	}
+	visibleLines := tp.cachedLines[tp.scrollOffset:endIdx]
 
-	content := strings.Join(lines, "\n")
+	content := strings.Join(visibleLines, "\n")
 
 	// Apply border
 	style := lipgloss.NewStyle().
