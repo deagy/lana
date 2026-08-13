@@ -13,6 +13,8 @@ import (
 	"github.com/deagy/lana/internal/provider"
 	"github.com/deagy/lana/internal/providers"
 	"github.com/deagy/lana/internal/session"
+	"github.com/deagy/lana/internal/storage"
+	"github.com/deagy/lana/internal/tui"
 )
 
 var (
@@ -40,8 +42,12 @@ var chatCmd = &cobra.Command{
 			model = cfg.Provider.Model
 		}
 
-		// Create session store
-		store := session.NewMemoryStore()
+		// Create session store (use file-based for Phase 3)
+		storeDir := cfg.Session.StorePath
+		store, err := storage.NewFileStore(storeDir)
+		if err != nil {
+			return fmt.Errorf("create session store: %w", err)
+		}
 		defer store.Close()
 
 		ctx := context.Background()
@@ -49,7 +55,6 @@ var chatCmd = &cobra.Command{
 		// Create or resume session
 		var sessionID string
 		var sess *session.Session
-		var err error
 
 		if resumeID != "" {
 			sessionID = resumeID
@@ -84,13 +89,24 @@ var chatCmd = &cobra.Command{
 		// Approval policy
 		policy := approval.NewStaticPolicy(approval.Mode(cfg.Approval.Mode))
 
+		// Determine mode: TUI or CLI
+		useTUI := tui.IsInteractive() && len(args) == 0 && resumeID == ""
+
 		// Process initial prompt if provided
 		if len(args) > 0 {
 			prompt := args[0]
+			if useTUI && len(args) == 0 {
+				// TUI mode with prompt
+				return tui.RunWithPrompt(ctx, sessionID, store, providerClient, policy, prompt)
+			}
 			return runSingleTurn(ctx, sess, store, sessionID, providerClient, policy, prompt)
 		}
 
 		// Interactive mode
+		if useTUI {
+			return tui.Run(ctx, sessionID, store, providerClient, policy)
+		}
+
 		return runInteractiveChat(ctx, sess, store, sessionID, providerClient, policy)
 	},
 }
@@ -107,6 +123,12 @@ func runSingleTurn(ctx context.Context, sess *session.Session, store session.Sto
 		Timestamp: time.Now(),
 	}
 	if err := store.AppendMessage(ctx, sessionID, userMsg); err != nil {
+		return err
+	}
+
+	// Reload session to get updated transcript
+	sess, err := store.Get(ctx, sessionID)
+	if err != nil {
 		return err
 	}
 
@@ -253,7 +275,7 @@ func runInteractiveChat(ctx context.Context, sess *session.Session, store sessio
 
 		chatReader.Close()
 
-		if !hasError {
+		if !hasError && assistantContent != "" {
 			fmt.Println()
 
 			// Add assistant message
