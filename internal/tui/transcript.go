@@ -50,7 +50,28 @@ func (tp *TranscriptPane) AppendContent(content string) {
 func (tp *TranscriptPane) AppendToolCall(name string, input string) {
 	msg := TranscriptMessage{
 		Role:    "system",
-		Content: fmt.Sprintf("[Tool Call: %s]\n%s", name, input),
+		Content: fmt.Sprintf("🔧 %s\n%s", name, input),
+		IsUser:  false,
+	}
+	tp.messages = append(tp.messages, msg)
+	tp.ScrollToEnd()
+}
+
+// AppendToolResult appends a tool result to the transcript.
+func (tp *TranscriptPane) AppendToolResult(name string, output string, err string) {
+	var content string
+	if err != "" {
+		content = fmt.Sprintf("🔧 %s error:\n%s", name, err)
+	} else {
+		if len(output) > 200 {
+			output = output[:197] + "..."
+		}
+		content = fmt.Sprintf("🔧 %s result:\n%s", name, output)
+	}
+
+	msg := TranscriptMessage{
+		Role:    "system",
+		Content: content,
 		IsUser:  false,
 	}
 	tp.messages = append(tp.messages, msg)
