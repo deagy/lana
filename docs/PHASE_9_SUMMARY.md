@@ -1,7 +1,7 @@
 # Phase 9: Lana as MCP Server
 
-**Status:** Part 1-2 Complete ✅ (Stdio Transport + MCP Tool Registration)  
-**Commits:** a642b73 (Part 1), 94e028f (Part 2)  
+**Status:** Part 1-3 Complete ✅ (Stdio + HTTP Transport + MCP Tool Registration)  
+**Commits:** a642b73 (Part 1), 94e028f (Part 2), 2cbf027 (Part 3)  
 **Date:** 2026-08-13
 
 ## Overview
@@ -189,9 +189,116 @@ If namespace collision is a problem, a future phase could add prefixes.
 4. **No tool discovery notifications** — `listChanged` capability not implemented
 5. **No resource operations** — MCP resources not exposed (only tools)
 
+## Part 3: HTTP Transport (Complete)
+
+### Overview
+
+Extends the MCP server to accept requests over HTTP, enabling remote MCP clients (like Claude running on another machine) to call Lana's tools over the network.
+
+**Architecture:**
+```
+Remote MCP Client (Claude on another machine)
+    ↓
+HTTP POST http://lana-host:3000/mcp
+    ↓
+HTTPServer (JSON-RPC handler)
+    ↓
+MCP Server (existing)
+    ↓
+Tool Registry (built-in + MCP tools)
+```
+
+### Implementation
+
+**`internal/mcp/server_http.go`** (120 LOC)
+- `HTTPServer` struct wraps MCP server for HTTP transport
+- `POST /mcp` endpoint accepts JSON-RPC 2.0 requests
+- `/health` endpoint for health checks
+- CORS headers for browser-based clients
+- Optional Bearer token authentication
+
+**`internal/cmd/mcp.go` updates:**
+- `--port` flag now fully functional (starts HTTP server instead of error)
+- Displays endpoint URL: `POST http://localhost:3000/mcp`
+- Automatic startup message for HTTP mode
+
+### Features
+
+**Endpoints:**
+```
+POST /mcp
+├── Headers: Content-Type: application/json, Authorization: Bearer <token> (optional)
+├── Body: JSON-RPC 2.0 request
+└── Response: JSON-RPC 2.0 response
+
+GET /health
+└── Response: {"status": "healthy"}
+```
+
+**Security:**
+- Optional Bearer token authentication (configurable)
+- CORS headers for cross-origin requests
+- Proper HTTP status codes (200, 400, 401, 405)
+
+**Non-blocking:**
+- Goroutine-based request handling
+- Multiple concurrent requests supported
+
+### Testing
+
+**Test 1: Initialize**
+```bash
+./lana mcp server --port 3000 &
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{...}}'
+→ ✅ Returns server capabilities
+```
+
+**Test 2: List Tools**
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+→ ✅ Returns 9 built-in tools
+```
+
+**Test 3: Call Tool**
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"README.md"}}}'
+→ ✅ Returns file contents
+```
+
+**Test 4: Health Check**
+```bash
+curl http://localhost:3000/health
+→ ✅ Returns {"status": "healthy"}
+```
+
+### Use Cases Enabled
+
+**1. Claude in cloud calling Lana on local machine:**
+```
+Claude Cloud → HTTP → Lana on laptop → read_file, write_file, git ops
+```
+
+**2. Multiple agents sharing Lana as tool provider:**
+```
+Agent A ─┐
+Agent B ─┼→ HTTP → Lana → Unified tool namespace
+Agent C ─┘
+```
+
+**3. Lana as tool provider in larger systems:**
+```
+Orchestration system → HTTP → Lana → Tools
+```
+
 ## Next Steps
 
-### Part 3: HTTP Transport
+### Part 4: Testing & Documentation
 - Add `internal/mcp/server_http.go` with HTTP/SSE endpoint
 - Enable remote clients to call Lana's tools over network
 - Support for bearer token authentication
@@ -204,22 +311,46 @@ If namespace collision is a problem, a future phase could add prefixes.
 
 ## Files Changed
 
-- `internal/mcp/server.go` — Core server (new)
-- `internal/mcp/server_stdio.go` — Stdio transport (new)
-- `internal/cmd/mcp.go` — CLI command (modified)
+**Part 1:**
+- `internal/mcp/server.go` — Core server (new, 155 LOC)
+- `internal/mcp/server_stdio.go` — Stdio transport (new, 100 LOC)
 
-**Total additions:** 363 lines (255 LOC + 108 LOC + boilerplate)
+**Part 2:**
+- `internal/cmd/mcp.go` — MCP config loading (modified, +37 lines)
+
+**Part 3:**
+- `internal/mcp/server_http.go` — HTTP transport (new, 120 LOC)
+- `internal/cmd/mcp.go` — HTTP server startup (modified, +15 lines)
+
+**Total additions:** 527 lines across 4 files
 
 ## Verification Checklist
 
+**Part 1 (Stdio):**
 - ✅ Builds without errors
-- ✅ `lana mcp server --help` shows new command
+- ✅ `lana mcp server --help` shows command
 - ✅ Server starts and listens on stdio
 - ✅ Initialize handshake completes
 - ✅ Tools/list returns all 9 tools
 - ✅ Tools/call executes read_file
-- ✅ Error handling works (tool not found, parse error)
+- ✅ Error handling works
 - ✅ JSON-RPC protocol compliance
+
+**Part 2 (MCP Registration):**
+- ✅ MCP servers loaded from config
+- ✅ MCP tools registered (mcp__<server>__<tool>)
+- ✅ Both built-in and MCP tools listed
+- ✅ Unified namespace works
+
+**Part 3 (HTTP):**
+- ✅ HTTP server starts on configured port
+- ✅ POST /mcp endpoint functional
+- ✅ Initialize works via HTTP
+- ✅ Tools/list works via HTTP
+- ✅ Tools/call works via HTTP
+- ✅ /health endpoint works
+- ✅ CORS headers present
+- ✅ Remote client access verified
 
 ## Architecture Impact
 
