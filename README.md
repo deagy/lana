@@ -1,29 +1,91 @@
-# Lana — Phase 1: Foundation
+# Lana — Phase 2: First Provider Vertical
 
-A terminal-first coding agent CLI written in Go. Phase 1 focuses on scaffolding the architecture and core abstractions.
+A terminal-first coding agent CLI written in Go. Phase 2 adds working provider implementations and streaming chat.
 
-## Phase 1 Status
+## Current Status
 
-**Goal:** Build the foundation with CLI structure, configuration, session persistence, interfaces, and a mock provider.
+**Phase:** 2 of 6 (Foundation + First Provider Vertical)
 
-**Completed:**
-- ✓ Repository scaffolding (Go module, directory structure)
-- ✓ Provider interface (`internal/provider/provider.go`)
-- ✓ Tool interface (`internal/tools/tool.go`)
-- ✓ Approval policy interface (`internal/approval/policy.go`)
-- ✓ Session store interface (`internal/session/store.go`)
-- ✓ In-memory session store (`internal/session/memory.go`)
-- ✓ Configuration layer (`internal/config/config.go`)
-- ✓ Mock provider for testing (`internal/provider/mock.go`)
-- ✓ Cobra CLI skeleton with root command and basic subcommands
+### Phase 1 ✅ Complete
+- Repository scaffolding with clean architecture
+- Core provider, tool, approval policy, and session store interfaces
+- Configuration layer with layered overrides
+- Mock provider for testing
 
-**CLI Commands (Phase 1):**
-- `lana version` — Show version info
+### Phase 2 ✅ Complete
+- **OpenAI-compatible provider** — Configurable URL, API key, model
+- **Ollama provider** — Local endpoint with model discovery
+- **Streaming chat** — Single-turn and interactive modes
+- **Provider/model selection** — Dynamic configuration
+- **Provider diagnostics** — Connection checks
+- **23 tests passing** (Phase 1 + Phase 2)
+
+## CLI Commands
+
+### Chat
+- `lana chat [prompt]` — Start or continue a session
+  - `--model <model>` — Override default model
+  - `--provider <provider>` — Override default provider
+  - `--resume <id>` — Resume previous session
+
+### Configuration
 - `lana config show|get|set|path` — Manage configuration
-- `lana providers list` — List available providers
+- `lana providers list` — Show available providers
+- `lana providers status` — Check provider connectivity
 - `lana models list` — List models for current provider
 - `lana sessions list|delete` — Manage sessions
-- `lana doctor` — Check system health
+- `lana doctor` — System health check
+- `lana version` — Version info
+
+## Quick Start
+
+### 1. Build the binary
+```bash
+make build
+./lana version
+```
+
+### 2. Configure a provider
+
+**OpenAI API:**
+```bash
+lana config set provider.name openai-compat
+lana config set provider.endpoint https://api.openai.com/v1
+lana config set provider.api_key sk-your-key-here
+lana config set provider.model gpt-4
+```
+
+**Ollama (local):**
+```bash
+lana config set provider.name ollama
+lana config set provider.model llama2
+# Make sure Ollama is running: ollama serve
+```
+
+**LM Studio (local):**
+```bash
+lana config set provider.name openai-compat
+lana config set provider.endpoint http://localhost:1234/v1
+lana config set provider.api_key not-needed
+lana config set provider.model local-model
+```
+
+### 3. Start a chat
+```bash
+# Single message
+lana chat "Hello, what can you do?"
+
+# Interactive chat (type 'exit' to quit)
+lana chat
+```
+
+### 4. Check provider status
+```bash
+lana doctor                  # Full system check
+lana providers list          # List available providers
+lana providers status        # Check current provider connectivity
+lana models list             # List available models
+```
 
 ## Building and Testing
 
